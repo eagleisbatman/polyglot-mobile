@@ -116,23 +116,29 @@ class DeviceService {
   }
 
   /// Get or create a persistent device ID
+  /// IMPORTANT: Always try platform ID first since it survives app reinstalls on real devices
   Future<String> getOrCreateDeviceId() async {
     final prefs = await SharedPreferences.getInstance();
     
-    // Check if we already have a device ID
+    // ALWAYS try platform-specific ID first (survives reinstalls on real devices)
+    final platformId = await _getPlatformDeviceId();
+    
+    if (platformId != null && platformId.isNotEmpty) {
+      // Use platform ID - save it to prefs for consistency
+      await prefs.setString(_deviceIdKey, platformId);
+      AppLogger.d('Using platform device ID: ${platformId.substring(0, 8)}...');
+      return platformId;
+    }
+    
+    // Fall back to cached ID or generate new UUID
     String? deviceId = prefs.getString(_deviceIdKey);
     
     if (deviceId == null || deviceId.isEmpty) {
-      // Try to get platform-specific device ID first
-      deviceId = await _getPlatformDeviceId();
-      
-      // If platform ID not available, generate UUID
-      if (deviceId == null || deviceId.isEmpty) {
-        deviceId = const Uuid().v4();
-      }
-      
-      // Save for future use
+      deviceId = const Uuid().v4();
       await prefs.setString(_deviceIdKey, deviceId);
+      AppLogger.d('Generated new device ID: ${deviceId.substring(0, 8)}...');
+    } else {
+      AppLogger.d('Using cached device ID: ${deviceId.substring(0, 8)}...');
     }
     
     return deviceId;

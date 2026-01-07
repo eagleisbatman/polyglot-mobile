@@ -199,15 +199,28 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> initialize() async {
     state = state.copyWith(status: AuthStatus.loading);
     
-    // Check if onboarding was completed before
+    // Check if onboarding was completed before (local cache)
     final prefs = await SharedPreferences.getInstance();
-    final onboardingComplete = prefs.getBool(_onboardingKey) ?? false;
+    final onboardingCompleteLocal = prefs.getBool(_onboardingKey) ?? false;
     
     final result = await _authService.registerDevice();
     
     if (result.status == AuthStatus.authenticated) {
-      // Determine if we need to show onboarding
-      final needsOnboarding = result.isNewUser && !onboardingComplete;
+      // Determine if we need to show onboarding:
+      // 1. Check local cache first (survives app restarts but not reinstalls)
+      // 2. If user has location data in backend, they've completed onboarding before
+      final userHasLocation = result.user?.country != null && 
+                              result.user!.country!.isNotEmpty;
+      final onboardingComplete = onboardingCompleteLocal || userHasLocation;
+      
+      // Save to local cache for faster checks
+      if (onboardingComplete && !onboardingCompleteLocal) {
+        await prefs.setBool(_onboardingKey, true);
+      }
+      
+      final needsOnboarding = !onboardingComplete;
+      
+      AppLogger.d('Auth: isNewUser=${result.isNewUser}, hasLocation=$userHasLocation, needsOnboarding=$needsOnboarding');
       
       state = result.copyWith(
         status: needsOnboarding ? AuthStatus.onboarding : AuthStatus.authenticated,
