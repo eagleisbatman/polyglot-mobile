@@ -57,9 +57,13 @@ class _AppState extends ConsumerState<App> {
           );
         }
 
-        // Show onboarding for new users
+        // Show onboarding for new users - wrap in Navigator for screen transitions
         if (authState.status == AuthStatus.onboarding) {
-          return const OnboardingScreen();
+          return Navigator(
+            onGenerateRoute: (settings) => MaterialPageRoute(
+              builder: (context) => const OnboardingScreen(),
+            ),
+          );
         }
 
         // Show main app (authenticated)
