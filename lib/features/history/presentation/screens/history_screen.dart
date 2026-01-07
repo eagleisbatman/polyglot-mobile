@@ -41,18 +41,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   }
 
   Future<void> _handleDelete(String id) async {
-    final success = await ref.read(historyProvider.notifier).deleteItem(id);
+    final success = await ref.read(historyProvider.notifier).deleteConversation(id);
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Deleted'),
+        const SnackBar(
+          content: Text('Deleted'),
           behavior: SnackBarBehavior.floating,
-          action: SnackBarAction(
-            label: 'Undo',
-            onPressed: () {
-              // TODO: Implement undo
-            },
-          ),
         ),
       );
     }
@@ -155,12 +149,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
   Widget _buildContent(HistoryState historyState, ThemeData theme) {
     // Loading state
-    if (historyState.items.isEmpty && historyState.isLoading) {
+    if (historyState.conversations.isEmpty && historyState.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
     // Empty state
-    if (historyState.items.isEmpty && !historyState.isLoading) {
+    if (historyState.conversations.isEmpty && !historyState.isLoading) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -196,16 +190,16 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       );
     }
 
-    // Items list
+    // Conversations list
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-      itemCount: historyState.items.length,
+      itemCount: historyState.conversations.length,
       itemBuilder: (context, index) {
-        final item = historyState.items[index];
+        final conversation = historyState.conversations[index];
         
         return Dismissible(
-          key: Key(item.id),
+          key: Key(conversation.id),
           direction: DismissDirection.endToStart,
           background: Container(
             alignment: Alignment.centerRight,
@@ -217,20 +211,21 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             ),
             child: Icon(Icons.delete, color: theme.colorScheme.onError),
           ),
-          onDismissed: (_) => _handleDelete(item.id),
-          child: _buildHistoryCard(item, theme),
+          onDismissed: (_) => _handleDelete(conversation.id),
+          child: _buildConversationCard(conversation, theme),
         );
       },
     );
   }
 
-  Widget _buildHistoryCard(HistoryItem item, ThemeData theme) {
-    final typeIcon = _getTypeIconData(item.type);
+  Widget _buildConversationCard(Conversation conversation, ThemeData theme) {
+    final preview = conversation.preview;
+    final typeIcon = _getTypeIconData(preview?.type ?? 'voice');
     
     return GestureDetector(
-      onTap: () => _openInChat(item),
+      onTap: () => _openConversation(conversation),
       child: Container(
-        key: Key('${TestTags.historyItem}_${item.id}'),
+        key: Key('${TestTags.historyItem}_${conversation.id}'),
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -243,7 +238,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top row: type badge, time
+            // Top row: type badge, message count, time
             Row(
               children: [
                 // Type badge
@@ -260,7 +255,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                         color: theme.colorScheme.onPrimaryContainer),
                       const SizedBox(width: 4),
                       Text(
-                        '${item.sourceLanguage?.toUpperCase() ?? 'AUTO'} → ${item.targetLanguage.toUpperCase()}',
+                        '${conversation.sourceLanguage?.toUpperCase() ?? 'AUTO'} → ${conversation.targetLanguage.toUpperCase()}',
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: theme.colorScheme.onPrimaryContainer,
                           fontWeight: FontWeight.w600,
@@ -269,9 +264,25 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
+                // Message count badge
+                if (conversation.messageCount > 1)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '${conversation.messageCount} msgs',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSecondaryContainer,
+                      ),
+                    ),
+                  ),
                 const Spacer(),
                 Text(
-                  _formatDate(item.createdAt),
+                  _formatDate(conversation.updatedAt),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.outline,
                   ),
@@ -281,9 +292,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             
             const SizedBox(height: 12),
             
-            // Original text
+            // Original text (from preview)
             Text(
-              item.displayTitle,
+              conversation.displayTitle,
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w500,
                 height: 1.4,
@@ -292,11 +303,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               overflow: TextOverflow.ellipsis,
             ),
             
-            // Translation
-            if (item.displaySubtitle != null) ...[
+            // Translation (from preview)
+            if (conversation.displaySubtitle != null) ...[
               const SizedBox(height: 8),
               Text(
-                item.displaySubtitle!,
+                conversation.displaySubtitle!,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                   height: 1.4,
@@ -311,23 +322,55 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     );
   }
 
-  void _openInChat(HistoryItem item) {
-    // Convert history item to chat message
-    final message = ChatMessage(
-      id: item.id,
-      type: MessageType.voice,
-      status: MessageStatus.complete,
-      userContent: item.transcription,
-      translatedContent: item.translation,
-      userAudioPath: item.userAudioUrl,
-      translationAudioPath: item.translationAudioUrl,
-      sourceLanguage: item.sourceLanguage ?? 'en',
-      targetLanguage: item.targetLanguage,
-      timestamp: item.createdAt,
+  Future<void> _openConversation(Conversation conversation) async {
+    // Fetch all messages in this conversation
+    final detail = await ref.read(historyProvider.notifier)
+        .getConversationMessages(conversation.id);
+    
+    if (detail == null || !mounted) return;
+    
+    // Convert all messages to ChatMessages
+    final chatMessages = detail.messages.map((msg) {
+      MessageType msgType;
+      switch (msg.type) {
+        case 'voice':
+          msgType = MessageType.voice;
+          break;
+        case 'vision':
+          msgType = MessageType.vision;
+          break;
+        case 'document':
+          msgType = MessageType.document;
+          break;
+        default:
+          msgType = MessageType.text;
+      }
+      
+      return ChatMessage(
+        id: msg.id,
+        type: msgType,
+        status: MessageStatus.complete,
+        userContent: msg.transcription ?? msg.extractedText,
+        translatedContent: msg.translation,
+        userAudioPath: msg.userAudioUrl,
+        translationAudioPath: msg.translationAudioUrl,
+        imageUrl: msg.imageUrl,
+        documentName: msg.documentName,
+        sourceLanguage: msg.sourceLanguage ?? 'en',
+        targetLanguage: msg.targetLanguage,
+        timestamp: msg.createdAt,
+      );
+    }).toList();
+    
+    // Load conversation into chat provider
+    ref.read(chatProvider.notifier).loadConversation(
+      conversationId: conversation.id,
+      messages: chatMessages,
+      sourceLanguage: conversation.sourceLanguage ?? 'en',
+      targetLanguage: conversation.targetLanguage,
     );
     
-    // Load into chat provider and navigate
-    ref.read(chatProvider.notifier).loadHistoryMessage(message);
+    // Navigate to chat screen
     context.go('/');
   }
 

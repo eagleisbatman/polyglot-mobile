@@ -13,6 +13,7 @@ class VoiceApiService {
     required String sourceLanguage,
     required String targetLanguage,
     String? previousInteractionId,
+    String? conversationId,
   }) async {
     // Use mock data if backend is not configured
     if (!apiClient.isConfigured) {
@@ -31,6 +32,8 @@ class VoiceApiService {
           'targetLanguage': targetLanguage,
           if (previousInteractionId != null)
             'previousInteractionId': previousInteractionId,
+          if (conversationId != null)
+            'conversationId': conversationId,
         },
       );
 
@@ -83,6 +86,7 @@ class VoiceApiService {
       success: true,
       data: VoiceTranslationResponse(
         interactionId: 'mock_interaction_${DateTime.now().millisecondsSinceEpoch}',
+        conversationId: 'mock_conversation_${DateTime.now().millisecondsSinceEpoch}',
         transcription: 'Hello, how are you?',
         translation: 'नमस्ते, आप कैसे हैं?',
         summary: 'Greeting exchange',
@@ -107,6 +111,7 @@ class VoiceApiService {
       success: true,
       data: VoiceTranslationResponse(
         interactionId: 'mock_interaction_${DateTime.now().millisecondsSinceEpoch}',
+        conversationId: 'mock_conversation_${DateTime.now().millisecondsSinceEpoch}',
         transcription: '',
         translation: 'I can help you with translation services.',
         summary: 'Follow-up response',
@@ -117,4 +122,3 @@ class VoiceApiService {
     );
   }
 }
-

@@ -8,78 +8,80 @@ final historyApiServiceProvider = Provider<HistoryApiService>((ref) {
 class HistoryState {
   final bool isLoading;
   final String? error;
-  final List<HistoryItem> items;
+  final List<Conversation> conversations;
   final int total;
   final int limit;
-  final int offset;
+  final int page;
   final String filterType; // 'all', 'voice', 'vision', 'document'
 
   HistoryState({
     this.isLoading = false,
     this.error,
-    this.items = const [],
+    this.conversations = const [],
     this.total = 0,
-    this.limit = 50,
-    this.offset = 0,
+    this.limit = 20,
+    this.page = 1,
     this.filterType = 'all',
   });
 
   HistoryState copyWith({
     bool? isLoading,
     String? error,
-    List<HistoryItem>? items,
+    List<Conversation>? conversations,
     int? total,
     int? limit,
-    int? offset,
+    int? page,
     String? filterType,
   }) {
     return HistoryState(
       isLoading: isLoading ?? this.isLoading,
       error: error,
-      items: items ?? this.items,
+      conversations: conversations ?? this.conversations,
       total: total ?? this.total,
       limit: limit ?? this.limit,
-      offset: offset ?? this.offset,
+      page: page ?? this.page,
       filterType: filterType ?? this.filterType,
     );
   }
+  
+  bool get hasMore => conversations.length < total;
 }
 
 class HistoryNotifier extends StateNotifier<HistoryState> {
   final HistoryApiService _historyApiService;
 
   HistoryNotifier(this._historyApiService) : super(HistoryState()) {
-    loadHistory();
+    loadConversations();
   }
 
-  Future<void> loadHistory({
+  Future<void> loadConversations({
     String? type,
     bool refresh = false,
   }) async {
     final filterType = type ?? state.filterType;
+    final page = refresh ? 1 : state.page;
 
     state = state.copyWith(
       isLoading: true,
       error: null,
-      offset: refresh ? 0 : state.offset,
     );
 
-    final response = await _historyApiService.getHistory(
+    final response = await _historyApiService.getConversations(
       type: filterType,
+      page: page,
       limit: state.limit,
-      offset: refresh ? 0 : state.offset,
     );
 
     if (response.success && response.data != null) {
-      final newItems = refresh
+      final newConversations = refresh
           ? response.data!.items
-          : [...state.items, ...response.data!.items];
+          : [...state.conversations, ...response.data!.items];
       
       state = state.copyWith(
         isLoading: false,
-        items: newItems,
+        conversations: newConversations,
         total: response.data!.total,
-        offset: newItems.length,
+        page: page + 1,
         filterType: filterType,
       );
     } else {
@@ -91,45 +93,45 @@ class HistoryNotifier extends StateNotifier<HistoryState> {
   }
 
   Future<void> loadMore() async {
-    if (state.items.length >= state.total || state.isLoading) {
+    if (!state.hasMore || state.isLoading) {
       return;
     }
-    await loadHistory();
+    await loadConversations();
   }
 
   Future<void> refresh() async {
-    await loadHistory(refresh: true);
+    await loadConversations(refresh: true);
   }
 
   Future<void> filterByType(String type) async {
-    await loadHistory(type: type, refresh: true);
+    await loadConversations(type: type, refresh: true);
   }
 
-  Future<bool> deleteItem(String id) async {
-    final response = await _historyApiService.deleteHistoryItem(id);
+  Future<bool> deleteConversation(String id) async {
+    final response = await _historyApiService.deleteConversation(id);
 
     if (response.success) {
       state = state.copyWith(
-        items: state.items.where((item) => item.id != id).toList(),
+        conversations: state.conversations.where((c) => c.id != id).toList(),
         total: state.total - 1,
       );
       return true;
     } else {
       state = state.copyWith(
-        error: response.error ?? 'Failed to delete item',
+        error: response.error ?? 'Failed to delete conversation',
       );
       return false;
     }
   }
 
-  Future<HistoryItem?> getItem(String id) async {
-    final response = await _historyApiService.getHistoryItem(id);
+  Future<ConversationDetailResponse?> getConversationMessages(String conversationId) async {
+    final response = await _historyApiService.getConversationMessages(conversationId);
 
     if (response.success && response.data != null) {
       return response.data;
     } else {
       state = state.copyWith(
-        error: response.error ?? 'Failed to load item',
+        error: response.error ?? 'Failed to load conversation',
       );
       return null;
     }
@@ -141,4 +143,3 @@ final historyProvider =
   final historyApiService = ref.watch(historyApiServiceProvider);
   return HistoryNotifier(historyApiService);
 });
-

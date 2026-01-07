@@ -2,9 +2,11 @@ import 'follow_up_question.dart';
 
 class VoiceTranslationResponse {
   final String interactionId;
+  final String conversationId;
   final String transcription;
   final String translation;
   final String summary;
+  final String? userAudioUrl; // User recording URL from Cloudinary
   final String? translationAudioUrl; // TTS audio URL from Cloudinary
   final List<FollowUpQuestion> followUpQuestions;
   final String detectedLanguage;
@@ -12,9 +14,11 @@ class VoiceTranslationResponse {
 
   VoiceTranslationResponse({
     required this.interactionId,
+    required this.conversationId,
     required this.transcription,
     required this.translation,
     required this.summary,
+    this.userAudioUrl,
     this.translationAudioUrl,
     required this.followUpQuestions,
     required this.detectedLanguage,
@@ -24,9 +28,11 @@ class VoiceTranslationResponse {
   factory VoiceTranslationResponse.fromJson(Map<String, dynamic> json) {
     return VoiceTranslationResponse(
       interactionId: json['interactionId'] as String,
+      conversationId: json['conversationId'] as String? ?? '',
       transcription: json['transcription'] as String,
       translation: json['translation'] as String,
       summary: json['summary'] as String,
+      userAudioUrl: json['userAudioUrl'] as String?,
       translationAudioUrl: json['translationAudioUrl'] as String?,
       followUpQuestions: (json['followUpQuestions'] as List<dynamic>?)
               ?.map((e) => FollowUpQuestion.fromJson(e as Map<String, dynamic>))
@@ -40,9 +46,11 @@ class VoiceTranslationResponse {
   Map<String, dynamic> toJson() {
     return {
       'interactionId': interactionId,
+      'conversationId': conversationId,
       'transcription': transcription,
       'translation': translation,
       'summary': summary,
+      'userAudioUrl': userAudioUrl,
       'translationAudioUrl': translationAudioUrl,
       'followUpQuestions': followUpQuestions.map((e) => e.toJson()).toList(),
       'detectedLanguage': detectedLanguage,
@@ -50,4 +58,3 @@ class VoiceTranslationResponse {
     };
   }
 }
-

@@ -25,6 +25,7 @@ final voiceApiProvider = Provider<VoiceApiService>((ref) => VoiceApiService());
 
 class ChatState {
   final List<ChatMessage> messages;
+  final String? conversationId;  // Current conversation ID
   final String sourceLanguage;
   final String targetLanguage;
   final bool isRecording;
@@ -39,6 +40,7 @@ class ChatState {
 
   const ChatState({
     this.messages = const [],
+    this.conversationId,
     this.sourceLanguage = 'en',
     this.targetLanguage = 'hi',
     this.isRecording = false,
@@ -54,6 +56,8 @@ class ChatState {
 
   ChatState copyWith({
     List<ChatMessage>? messages,
+    String? conversationId,
+    bool clearConversationId = false,
     String? sourceLanguage,
     String? targetLanguage,
     bool? isRecording,
@@ -68,6 +72,7 @@ class ChatState {
   }) {
     return ChatState(
       messages: messages ?? this.messages,
+      conversationId: clearConversationId ? null : (conversationId ?? this.conversationId),
       sourceLanguage: sourceLanguage ?? this.sourceLanguage,
       targetLanguage: targetLanguage ?? this.targetLanguage,
       isRecording: isRecording ?? this.isRecording,
@@ -181,6 +186,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     _analytics.trackEvent(AnalyticsEvents.newSessionStarted);
     state = state.copyWith(
       messages: [],
+      clearConversationId: true,  // Clear conversationId for new session
       liveUserText: null,
       liveModelText: null,
       error: null,
@@ -197,6 +203,27 @@ class ChatNotifier extends StateNotifier<ChatState> {
       messages: [message],
       sourceLanguage: message.sourceLanguage,
       targetLanguage: message.targetLanguage,
+      liveUserText: null,
+      liveModelText: null,
+      error: null,
+      isRecording: false,
+      isProcessing: false,
+      currentlyPlayingId: null,
+    );
+  }
+
+  /// Load a full conversation from history
+  void loadConversation({
+    required String conversationId,
+    required List<ChatMessage> messages,
+    required String sourceLanguage,
+    required String targetLanguage,
+  }) {
+    state = state.copyWith(
+      messages: messages,
+      conversationId: conversationId,
+      sourceLanguage: sourceLanguage,
+      targetLanguage: targetLanguage,
       liveUserText: null,
       liveModelText: null,
       error: null,
@@ -435,6 +462,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
         audioBase64: base64Audio,
         sourceLanguage: state.sourceLanguage,
         targetLanguage: state.targetLanguage,
+        conversationId: state.conversationId,
       );
       
       AppLogger.d('API response: success=${response.success}, error=${response.error}');
@@ -442,13 +470,19 @@ class ChatNotifier extends StateNotifier<ChatState> {
       if (response.success && response.data != null) {
         AppLogger.d('Translation received, audioUrl: ${response.data!.translationAudioUrl}');
         
+        // Store conversationId for future messages in this session
+        if (response.data!.conversationId.isNotEmpty) {
+          state = state.copyWith(conversationId: response.data!.conversationId);
+        }
+        
         final updatedMessage = ChatMessage(
           id: messageId,
           type: MessageType.voice,
           status: MessageStatus.complete,
           userContent: response.data!.transcription,
           translatedContent: response.data!.translation,
-          userAudioPath: audioPath,
+          // Prefer Cloudinary URL, fallback to local path
+          userAudioPath: response.data!.userAudioUrl ?? audioPath,
           translationAudioPath: response.data!.translationAudioUrl, // TTS audio URL
           sourceLanguage: state.sourceLanguage,
           targetLanguage: state.targetLanguage,
