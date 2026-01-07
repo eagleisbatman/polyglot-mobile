@@ -7,12 +7,14 @@ class TranslationMessageBubble extends StatelessWidget {
   final ChatMessage message;
   final VoidCallback? onPlayAudio;
   final VoidCallback? onRetry;
+  final bool isPlaying;
 
   const TranslationMessageBubble({
     super.key,
     required this.message,
     this.onPlayAudio,
     this.onRetry,
+    this.isPlaying = false,
   });
 
   @override
@@ -70,6 +72,7 @@ class TranslationMessageBubble extends StatelessWidget {
       message: message,
       theme: theme,
       isStreaming: isStreaming,
+      isPlaying: isPlaying,
       onPlayAudio: onPlayAudio,
     );
   }
@@ -165,17 +168,22 @@ class _TranslationContent extends StatelessWidget {
   final ChatMessage message;
   final ThemeData theme;
   final bool isStreaming;
+  final bool isPlaying;
   final VoidCallback? onPlayAudio;
 
   const _TranslationContent({
     required this.message,
     required this.theme,
     required this.isStreaming,
+    this.isPlaying = false,
     this.onPlayAudio,
   });
 
   @override
   Widget build(BuildContext context) {
+    final hasAudio = message.translationAudioPath != null || 
+                     message.translatedContent != null;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -186,10 +194,13 @@ class _TranslationContent extends StatelessWidget {
             height: 1.4,
           ),
         ),
-        if (message.type == MessageType.voice &&
-            message.audioUrl != null &&
-            onPlayAudio != null)
-          _PlayAudioButton(theme: theme, onPressed: onPlayAudio!),
+        // Show play button for voice messages
+        if (message.type == MessageType.voice && hasAudio && onPlayAudio != null)
+          _PlayAudioButton(
+            theme: theme, 
+            isPlaying: isPlaying,
+            onPressed: onPlayAudio!,
+          ),
         if (isStreaming) ...[
           const SizedBox(height: 4),
           const StreamingDots(),
@@ -201,10 +212,12 @@ class _TranslationContent extends StatelessWidget {
 
 class _PlayAudioButton extends StatelessWidget {
   final ThemeData theme;
+  final bool isPlaying;
   final VoidCallback onPressed;
 
   const _PlayAudioButton({
     required this.theme,
+    this.isPlaying = false,
     required this.onPressed,
   });
 
@@ -225,13 +238,13 @@ class _PlayAudioButton extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.volume_up,
+                isPlaying ? Icons.stop : Icons.volume_up,
                 size: 16,
                 color: theme.colorScheme.primary,
               ),
               const SizedBox(width: 6),
               Text(
-                'Play audio',
+                isPlaying ? 'Stop' : 'Play translation',
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: theme.colorScheme.primary,
                   fontWeight: FontWeight.w600,

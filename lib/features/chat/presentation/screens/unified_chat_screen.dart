@@ -148,6 +148,13 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
         },
       ),
       actions: [
+        // New translation button
+        if (state.messages.isNotEmpty)
+          IconButton(
+            icon: const Icon(Icons.add_comment_outlined),
+            tooltip: 'New translation',
+            onPressed: notifier.startNewSession,
+          ),
         IconButton(
           icon: const Icon(Icons.history),
           onPressed: () => context.push('/history'),
@@ -161,21 +168,33 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
   }
 
   Widget _buildMessagesList(ChatState state, ThemeData theme) {
+    final notifier = ref.read(chatProvider.notifier);
+    final hasLiveContent = state.liveUserText != null || state.liveModelText != null;
+    final itemCount = state.messages.length + (hasLiveContent ? 1 : 0);
+    
     return Expanded(
-      child: state.messages.isEmpty
+      child: state.messages.isEmpty && !hasLiveContent
           ? const ChatEmptyState()
           : ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.only(top: 16, bottom: 8),
-              itemCount: state.messages.length,
+              itemCount: itemCount,
               itemBuilder: (context, index) {
+                // Show live streaming content at the end
+                if (index == state.messages.length && hasLiveContent) {
+                  return _buildLiveStreamingBubble(state, theme);
+                }
+                
                 final message = state.messages[index];
                 return ChatMessageBubble(
                   message: message,
-                  onPlayAudio: message.audioUrl != null
-                      ? () {
-                          // TODO: Play audio
-                        }
+                  isPlayingUserAudio: state.currentlyPlayingId == '${message.id}_user',
+                  isPlayingTranslation: state.currentlyPlayingId == '${message.id}_translation',
+                  onPlayUserAudio: message.userAudioPath != null
+                      ? () => notifier.playUserAudio(message.id)
+                      : null,
+                  onPlayTranslationAudio: message.translatedContent != null
+                      ? () => notifier.playTranslationAudio(message.id)
                       : null,
                   onRetry: message.status == MessageStatus.error
                       ? () {
@@ -185,6 +204,119 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
                 );
               },
             ),
+    );
+  }
+
+  Widget _buildLiveStreamingBubble(ChatState state, ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // User's live transcription
+          if (state.liveUserText != null && state.liveUserText!.isNotEmpty)
+            Align(
+              alignment: Alignment.centerRight,
+              child: Container(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.75,
+                ),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withOpacity(0.3),
+                    style: BorderStyle.solid,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.mic,
+                          size: 14,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'LISTENING...',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      state.liveUserText!,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.8),
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          
+          const SizedBox(height: 8),
+          
+          // Model's live translation
+          if (state.liveModelText != null && state.liveModelText!.isNotEmpty)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.75,
+                ),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withOpacity(0.3),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.translate,
+                          size: 14,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'TRANSLATING...',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      state.liveModelText!,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 

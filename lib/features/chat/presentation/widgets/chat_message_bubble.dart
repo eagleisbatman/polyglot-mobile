@@ -10,14 +10,20 @@ import 'translation_message_bubble.dart';
 /// - AI's translation response
 class ChatMessageBubble extends StatelessWidget {
   final ChatMessage message;
-  final VoidCallback? onPlayAudio;
+  final VoidCallback? onPlayUserAudio;
+  final VoidCallback? onPlayTranslationAudio;
   final VoidCallback? onRetry;
+  final bool isPlayingUserAudio;
+  final bool isPlayingTranslation;
 
   const ChatMessageBubble({
     super.key,
     required this.message,
-    this.onPlayAudio,
+    this.onPlayUserAudio,
+    this.onPlayTranslationAudio,
     this.onRetry,
+    this.isPlayingUserAudio = false,
+    this.isPlayingTranslation = false,
   });
 
   @override
@@ -34,6 +40,9 @@ class ChatMessageBubble extends StatelessWidget {
               type: message.type,
               imageUrl: message.imageUrl,
               documentName: message.documentName,
+              hasAudio: message.userAudioPath != null,
+              isPlaying: isPlayingUserAudio,
+              onPlayAudio: onPlayUserAudio,
             ),
           
           const SizedBox(height: 8),
@@ -41,8 +50,9 @@ class ChatMessageBubble extends StatelessWidget {
           // Translation response
           TranslationMessageBubble(
             message: message,
-            onPlayAudio: onPlayAudio,
+            onPlayAudio: onPlayTranslationAudio,
             onRetry: onRetry,
+            isPlaying: isPlayingTranslation,
           ),
         ],
       ),

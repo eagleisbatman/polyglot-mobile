@@ -80,6 +80,9 @@ class AudioService {
   }
 
   bool get isRecording => _isRecording;
+  
+  /// Get the path of the current/last recording
+  String? get currentRecordingPath => _currentRecordingPath;
 
   void dispose() {
     _recorder.dispose();

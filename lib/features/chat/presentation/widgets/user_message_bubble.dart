@@ -7,6 +7,9 @@ class UserMessageBubble extends StatelessWidget {
   final MessageType type;
   final String? imageUrl;
   final String? documentName;
+  final bool hasAudio;
+  final bool isPlaying;
+  final VoidCallback? onPlayAudio;
 
   const UserMessageBubble({
     super.key,
@@ -14,6 +17,9 @@ class UserMessageBubble extends StatelessWidget {
     required this.type,
     this.imageUrl,
     this.documentName,
+    this.hasAudio = false,
+    this.isPlaying = false,
+    this.onPlayAudio,
   });
 
   IconData _getTypeIcon() {
@@ -62,6 +68,13 @@ class UserMessageBubble extends StatelessWidget {
                 color: theme.colorScheme.onSurface,
               ),
             ),
+            // Play audio button for voice messages
+            if (type == MessageType.voice && hasAudio && onPlayAudio != null)
+              _PlayUserAudioButton(
+                theme: theme,
+                isPlaying: isPlaying,
+                onPressed: onPlayAudio!,
+              ),
           ],
         ),
       ),
@@ -177,6 +190,54 @@ class _DocumentChip extends StatelessWidget {
         ),
         const SizedBox(height: 8),
       ],
+    );
+  }
+}
+
+class _PlayUserAudioButton extends StatelessWidget {
+  final ThemeData theme;
+  final bool isPlaying;
+  final VoidCallback onPressed;
+
+  const _PlayUserAudioButton({
+    required this.theme,
+    required this.isPlaying,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.secondary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isPlaying ? Icons.stop : Icons.play_arrow,
+                size: 16,
+                color: theme.colorScheme.secondary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                isPlaying ? 'Stop' : 'Play my voice',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.secondary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

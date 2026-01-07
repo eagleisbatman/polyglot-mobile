@@ -1,14 +1,24 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../../../../core/services/audio_service.dart';
+import '../../../../core/services/audio_player_service.dart';
+import '../../../../core/services/realtime_translation_service.dart';
+import '../../../../core/services/history_storage_service.dart';
 import '../../../../core/services/voice_api_service.dart';
 import '../../../../core/analytics/analytics_service.dart';
 import '../../../../core/analytics/analytics_events.dart';
 import '../../../../core/analytics/analytics_provider.dart';
 import '../../domain/entities/chat_message.dart';
 
+// Service providers
 final audioServiceProvider = Provider<AudioService>((ref) => AudioService());
-
+final audioPlayerProvider = Provider<AudioPlayerService>((ref) => AudioPlayerService());
+final realtimeServiceProvider = Provider<RealtimeTranslationService>((ref) => RealtimeTranslationService());
+final historyStorageProvider = Provider<HistoryStorageService>((ref) => HistoryStorageService());
 final voiceApiProvider = Provider<VoiceApiService>((ref) => VoiceApiService());
 
 class ChatState {
@@ -17,8 +27,13 @@ class ChatState {
   final String targetLanguage;
   final bool isRecording;
   final bool isProcessing;
+  final bool isConnected;        // Real-time connection status
+  final bool isConnecting;       // Connecting to real-time service
   final Duration recordingDuration;
+  final String? liveUserText;    // Current live transcription from user
+  final String? liveModelText;   // Current live transcription from model
   final String? error;
+  final String? currentlyPlayingId;  // ID of message being played
 
   const ChatState({
     this.messages = const [],
@@ -26,8 +41,13 @@ class ChatState {
     this.targetLanguage = 'hi',
     this.isRecording = false,
     this.isProcessing = false,
+    this.isConnected = false,
+    this.isConnecting = false,
     this.recordingDuration = Duration.zero,
+    this.liveUserText,
+    this.liveModelText,
     this.error,
+    this.currentlyPlayingId,
   });
 
   ChatState copyWith({
@@ -36,8 +56,13 @@ class ChatState {
     String? targetLanguage,
     bool? isRecording,
     bool? isProcessing,
+    bool? isConnected,
+    bool? isConnecting,
     Duration? recordingDuration,
+    String? liveUserText,
+    String? liveModelText,
     String? error,
+    String? currentlyPlayingId,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
@@ -45,20 +70,47 @@ class ChatState {
       targetLanguage: targetLanguage ?? this.targetLanguage,
       isRecording: isRecording ?? this.isRecording,
       isProcessing: isProcessing ?? this.isProcessing,
+      isConnected: isConnected ?? this.isConnected,
+      isConnecting: isConnecting ?? this.isConnecting,
       recordingDuration: recordingDuration ?? this.recordingDuration,
+      liveUserText: liveUserText,
+      liveModelText: liveModelText,
       error: error,
+      currentlyPlayingId: currentlyPlayingId,
     );
   }
 }
 
 class ChatNotifier extends StateNotifier<ChatState> {
   final AudioService _audioService;
+  final AudioPlayerService _playerService;
+  final RealtimeTranslationService _realtimeService;
+  final HistoryStorageService _historyStorage;
   final VoiceApiService _apiService;
   final AnalyticsService _analytics;
+  
   Timer? _recordingTimer;
+  StreamSubscription<RealtimeEvent>? _realtimeSubscription;
+  String _userTextAccumulator = '';
+  String _modelTextAccumulator = '';
+  String? _currentMessageId;
+  List<Uint8List> _translationAudioChunks = [];
 
-  ChatNotifier(this._audioService, this._apiService, this._analytics)
-      : super(const ChatState());
+  ChatNotifier(
+    this._audioService,
+    this._playerService,
+    this._realtimeService,
+    this._historyStorage,
+    this._apiService,
+    this._analytics,
+  ) : super(const ChatState()) {
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    final history = await _historyStorage.getHistory();
+    state = state.copyWith(messages: history);
+  }
 
   void setSourceLanguage(String lang) {
     _analytics.trackEvent(
@@ -85,6 +137,17 @@ class ChatNotifier extends StateNotifier<ChatState> {
     _analytics.trackEvent(AnalyticsEvents.voiceLanguageSwapped);
   }
 
+  /// Start a new translation session (clear current conversation)
+  void startNewSession() {
+    _analytics.trackEvent(AnalyticsEvents.voiceRecordingStarted);
+    state = state.copyWith(
+      liveUserText: null,
+      liveModelText: null,
+      error: null,
+    );
+  }
+
+  /// Start recording with real-time streaming
   Future<void> startRecording() async {
     _analytics.trackEvent(
       AnalyticsEvents.voiceRecordingStarted,
@@ -94,17 +157,122 @@ class ChatNotifier extends StateNotifier<ChatState> {
       },
     );
 
+    state = state.copyWith(isConnecting: true, error: null);
+
+    // Try real-time first, fall back to batch if unavailable
+    final connected = await _realtimeService.connect(
+      sourceLanguage: state.sourceLanguage,
+      targetLanguage: state.targetLanguage,
+    );
+
+    if (connected) {
+      _setupRealtimeListeners();
+      state = state.copyWith(isConnecting: false, isConnected: true);
+    }
+
+    // Start audio recording
     final started = await _audioService.startRecording();
     if (started) {
+      _currentMessageId = DateTime.now().millisecondsSinceEpoch.toString();
+      _userTextAccumulator = '';
+      _modelTextAccumulator = '';
+      _translationAudioChunks = [];
+      
       state = state.copyWith(
         isRecording: true,
         recordingDuration: Duration.zero,
-        error: null,
       );
       _startRecordingTimer();
+
+      // If connected, start streaming audio chunks
+      if (state.isConnected) {
+        _startAudioStreaming();
+      }
     } else {
-      state = state.copyWith(error: 'Failed to start recording');
+      state = state.copyWith(
+        isConnecting: false,
+        error: 'Failed to start recording',
+      );
     }
+  }
+
+  void _setupRealtimeListeners() {
+    _realtimeSubscription?.cancel();
+    _realtimeSubscription = _realtimeService.events?.listen((event) {
+      switch (event) {
+        case UserTranscriptionEvent(:final text):
+          _userTextAccumulator += text;
+          state = state.copyWith(liveUserText: _userTextAccumulator);
+          break;
+        case ModelTranscriptionEvent(:final text):
+          _modelTextAccumulator += text;
+          state = state.copyWith(liveModelText: _modelTextAccumulator);
+          break;
+        case AudioOutputEvent(:final data):
+          _translationAudioChunks.add(data);
+          _playerService.queueAudioChunk(data);
+          break;
+        case TurnCompleteEvent():
+          _finalizeTurn();
+          break;
+        case RealtimeErrorEvent(:final message):
+          state = state.copyWith(error: message);
+          break;
+        case RealtimeDisconnectedEvent():
+          state = state.copyWith(isConnected: false);
+          break;
+        default:
+          break;
+      }
+    });
+  }
+
+  void _finalizeTurn() {
+    if (_userTextAccumulator.isEmpty && _modelTextAccumulator.isEmpty) return;
+
+    final messageId = _currentMessageId ?? DateTime.now().millisecondsSinceEpoch.toString();
+    
+    // Check if message already exists
+    final existingIndex = state.messages.indexWhere((m) => m.id == messageId);
+    
+    final message = ChatMessage(
+      id: messageId,
+      type: MessageType.voice,
+      status: MessageStatus.complete,
+      userContent: _userTextAccumulator,
+      translatedContent: _modelTextAccumulator,
+      sourceLanguage: state.sourceLanguage,
+      targetLanguage: state.targetLanguage,
+      timestamp: DateTime.now(),
+    );
+
+    List<ChatMessage> updatedMessages;
+    if (existingIndex >= 0) {
+      updatedMessages = [...state.messages];
+      updatedMessages[existingIndex] = message;
+    } else {
+      updatedMessages = [...state.messages, message];
+    }
+
+    state = state.copyWith(
+      messages: updatedMessages,
+      liveUserText: null,
+      liveModelText: null,
+    );
+
+    // Save to history
+    _historyStorage.saveMessage(message);
+
+    // Reset accumulators for next turn
+    _userTextAccumulator = '';
+    _modelTextAccumulator = '';
+    _currentMessageId = DateTime.now().millisecondsSinceEpoch.toString();
+  }
+
+  void _startAudioStreaming() {
+    // In a real implementation, we'd capture audio chunks and stream them
+    // For now, this is a placeholder for the audio streaming logic
+    // The audio service would need to emit chunks that we send to the realtime service
   }
 
   void _startRecordingTimer() {
@@ -121,9 +289,17 @@ class ChatNotifier extends StateNotifier<ChatState> {
     _analytics.trackEvent(AnalyticsEvents.voiceRecordingStopped);
 
     final audioPath = await _audioService.stopRecording();
-    if (audioPath != null) {
+    
+    // Disconnect real-time if connected
+    if (state.isConnected) {
+      _finalizeTurn(); // Save any pending transcription
+      await _realtimeService.disconnect();
+      _realtimeSubscription?.cancel();
+      state = state.copyWith(isRecording: false, isConnected: false);
+    } else if (audioPath != null) {
+      // Fall back to batch translation
       state = state.copyWith(isRecording: false, isProcessing: true);
-      await _translateAudio(audioPath);
+      await _translateAudioBatch(audioPath);
     } else {
       state = state.copyWith(
         isRecording: false,
@@ -135,20 +311,26 @@ class ChatNotifier extends StateNotifier<ChatState> {
   void cancelRecording() {
     _recordingTimer?.cancel();
     _audioService.stopRecording();
+    _realtimeService.disconnect();
+    _realtimeSubscription?.cancel();
     state = state.copyWith(
       isRecording: false,
+      isConnected: false,
       recordingDuration: Duration.zero,
+      liveUserText: null,
+      liveModelText: null,
     );
   }
 
-  Future<void> _translateAudio(String audioPath) async {
+  /// Batch translation fallback (when real-time is unavailable)
+  Future<void> _translateAudioBatch(String audioPath) async {
     final messageId = DateTime.now().millisecondsSinceEpoch.toString();
     
-    // Add placeholder message
     final newMessage = ChatMessage(
       id: messageId,
       type: MessageType.voice,
       status: MessageStatus.sending,
+      userAudioPath: audioPath,
       sourceLanguage: state.sourceLanguage,
       targetLanguage: state.targetLanguage,
       timestamp: DateTime.now(),
@@ -176,11 +358,20 @@ class ChatNotifier extends StateNotifier<ChatState> {
       );
 
       if (response.success && response.data != null) {
-        _updateMessage(messageId, (m) => m.copyWith(
+        final updatedMessage = ChatMessage(
+          id: messageId,
+          type: MessageType.voice,
           status: MessageStatus.complete,
           userContent: response.data!.transcription,
           translatedContent: response.data!.translation,
-        ));
+          userAudioPath: audioPath,
+          sourceLanguage: state.sourceLanguage,
+          targetLanguage: state.targetLanguage,
+          timestamp: DateTime.now(),
+        );
+        
+        _updateMessage(messageId, (_) => updatedMessage);
+        _historyStorage.saveMessage(updatedMessage);
         
         _analytics.trackEvent(
           AnalyticsEvents.voiceTranslationCompleted,
@@ -213,8 +404,70 @@ class ChatNotifier extends StateNotifier<ChatState> {
     state = state.copyWith(messages: messages);
   }
 
+  /// Play user's recorded audio
+  Future<void> playUserAudio(String messageId) async {
+    final message = state.messages.firstWhere(
+      (m) => m.id == messageId,
+      orElse: () => throw Exception('Message not found'),
+    );
+    
+    if (message.userAudioPath != null) {
+      state = state.copyWith(currentlyPlayingId: '${messageId}_user');
+      await _playerService.playFile(message.userAudioPath!);
+      
+      _playerService.onPlayerStateChanged.listen((playerState) {
+        if (playerState == PlayerState.completed || playerState == PlayerState.stopped) {
+          state = state.copyWith(currentlyPlayingId: null);
+        }
+      });
+    }
+  }
+
+  /// Play translation audio (TTS)
+  Future<void> playTranslationAudio(String messageId) async {
+    final message = state.messages.firstWhere(
+      (m) => m.id == messageId,
+      orElse: () => throw Exception('Message not found'),
+    );
+    
+    if (message.translationAudioPath != null) {
+      state = state.copyWith(currentlyPlayingId: '${messageId}_translation');
+      await _playerService.playFile(message.translationAudioPath!);
+      
+      _playerService.onPlayerStateChanged.listen((playerState) {
+        if (playerState == PlayerState.completed || playerState == PlayerState.stopped) {
+          state = state.copyWith(currentlyPlayingId: null);
+        }
+      });
+    } else if (message.translatedContent != null) {
+      // TODO: Generate TTS for the translation text
+      state = state.copyWith(error: 'TTS audio not available');
+    }
+  }
+
+  /// Stop audio playback
+  Future<void> stopPlayback() async {
+    await _playerService.stop();
+    state = state.copyWith(currentlyPlayingId: null);
+  }
+
+  /// Delete a message
+  Future<void> deleteMessage(String messageId) async {
+    await _historyStorage.deleteMessage(messageId);
+    final messages = state.messages.where((m) => m.id != messageId).toList();
+    state = state.copyWith(messages: messages);
+  }
+
+  /// Clear all messages from current session
+  void clearCurrentSession() {
+    state = state.copyWith(
+      liveUserText: null,
+      liveModelText: null,
+      error: null,
+    );
+  }
+
   Future<void> addImageMessage(String imagePath) async {
-    // TODO: Implement vision translation
     final messageId = DateTime.now().millisecondsSinceEpoch.toString();
     final message = ChatMessage(
       id: messageId,
@@ -227,17 +480,18 @@ class ChatNotifier extends StateNotifier<ChatState> {
     );
     state = state.copyWith(messages: [...state.messages, message]);
     
-    // Simulated response for now
+    // TODO: Implement actual vision translation
     await Future.delayed(const Duration(seconds: 2));
-    _updateMessage(messageId, (m) => m.copyWith(
+    final updatedMessage = message.copyWith(
       status: MessageStatus.complete,
       userContent: 'Image captured',
       translatedContent: 'Vision translation coming soon...',
-    ));
+    );
+    _updateMessage(messageId, (_) => updatedMessage);
+    _historyStorage.saveMessage(updatedMessage);
   }
 
   Future<void> addDocumentMessage(String documentPath, String documentName) async {
-    // TODO: Implement document translation
     final messageId = DateTime.now().millisecondsSinceEpoch.toString();
     final message = ChatMessage(
       id: messageId,
@@ -250,18 +504,23 @@ class ChatNotifier extends StateNotifier<ChatState> {
     );
     state = state.copyWith(messages: [...state.messages, message]);
     
-    // Simulated response for now
+    // TODO: Implement actual document translation
     await Future.delayed(const Duration(seconds: 2));
-    _updateMessage(messageId, (m) => m.copyWith(
+    final updatedMessage = message.copyWith(
       status: MessageStatus.complete,
       userContent: 'Document: $documentName',
       translatedContent: 'Document translation coming soon...',
-    ));
+    );
+    _updateMessage(messageId, (_) => updatedMessage);
+    _historyStorage.saveMessage(updatedMessage);
   }
 
   @override
   void dispose() {
     _recordingTimer?.cancel();
+    _realtimeSubscription?.cancel();
+    _realtimeService.disconnect();
+    _playerService.dispose();
     super.dispose();
   }
 }
@@ -269,8 +528,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
 final chatProvider = StateNotifierProvider<ChatNotifier, ChatState>((ref) {
   return ChatNotifier(
     ref.read(audioServiceProvider),
+    ref.read(audioPlayerProvider),
+    ref.read(realtimeServiceProvider),
+    ref.read(historyStorageProvider),
     ref.read(voiceApiProvider),
     ref.read(analyticsServiceProvider),
   );
 });
-
