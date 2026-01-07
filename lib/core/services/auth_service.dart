@@ -28,17 +28,20 @@ class AuthState {
     this.onboardingComplete = false,
   });
 
+  /// Copy with optional overrides
+  /// Set [clearError] to true to explicitly clear the error
   AuthState copyWith({
     AuthStatus? status,
     User? user,
     String? error,
+    bool clearError = false,
     bool? isNewUser,
     bool? onboardingComplete,
   }) {
     return AuthState(
       status: status ?? this.status,
       user: user ?? this.user,
-      error: error,
+      error: clearError ? null : (error ?? this.error),
       isNewUser: isNewUser ?? this.isNewUser,
       onboardingComplete: onboardingComplete ?? this.onboardingComplete,
     );

@@ -65,7 +65,9 @@ class _LocationPermissionScreenState
       }
     }
 
-    setState(() => _isLoading = false);
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
 
   void _showSettingsDialog() {
@@ -100,20 +102,32 @@ class _LocationPermissionScreenState
   Future<void> _skipLocation() async {
     setState(() => _isLoading = true);
 
-    // Get location from IP (handled by backend)
-    final authService = ref.read(authServiceProvider);
-    final userId = await authService.getCurrentUserId();
-    
-    if (userId != null) {
-      // Backend will use IP-based location when no coordinates provided
-      await authService.updateLocation(
-        userId: userId,
-        // Empty location triggers IP-based detection on backend
-      );
-    }
+    try {
+      // Get location from IP (handled by backend)
+      final authService = ref.read(authServiceProvider);
+      final userId = await authService.getCurrentUserId();
+      
+      if (userId != null) {
+        // Backend will use IP-based location when no coordinates provided
+        await authService.updateLocation(
+          userId: userId,
+          // Empty location triggers IP-based detection on backend
+        );
+      }
 
-    if (mounted) {
-      _completeOnboarding();
+      if (mounted) {
+        _completeOnboarding();
+      }
+    } catch (e) {
+      debugPrint('Skip location error: $e');
+      if (mounted) {
+        // Still complete onboarding even if IP location fails
+        _completeOnboarding();
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
