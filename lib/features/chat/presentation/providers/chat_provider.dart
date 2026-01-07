@@ -243,15 +243,70 @@ class ChatNotifier extends StateNotifier<ChatState> {
       },
     );
 
-    state = state.copyWith(isConnecting: false, error: null);
+    state = state.copyWith(isConnecting: true, error: null);
     _userAudioChunks = []; // Reset audio chunks
 
-    // TODO: Re-enable WebSocket when backend supports it properly
-    // For now, go straight to batch recording for reliability
-    AppLogger.d('Starting batch recording (WebSocket disabled temporarily)');
-    await _startBatchRecording();
+    // Try WebSocket first for real-time streaming, fallback to batch if fails
+    AppLogger.d('Attempting WebSocket connection for real-time streaming');
+    
+    try {
+      final connected = await _realtimeService.connect(
+        sourceLanguage: state.sourceLanguage,
+        targetLanguage: state.targetLanguage,
+      ).timeout(const Duration(seconds: 5));
+      
+      if (connected) {
+        AppLogger.d('WebSocket connected, starting real-time recording');
+        _setupRealtimeListeners();
+        await _startRealtimeRecording();
+      } else {
+        AppLogger.d('WebSocket connection failed, falling back to batch');
+        await _startBatchRecording();
+      }
+    } catch (e) {
+      AppLogger.w('WebSocket connection error: $e, falling back to batch');
+      await _startBatchRecording();
+    }
   }
   
+  /// Start real-time streaming recording
+  Future<void> _startRealtimeRecording() async {
+    state = state.copyWith(isConnecting: false, isConnected: true);
+    
+    // Start audio recording with streaming
+    final audioStream = await _audioService.startStreamingRecording();
+    if (audioStream != null) {
+      _currentMessageId = DateTime.now().millisecondsSinceEpoch.toString();
+      _userTextAccumulator = '';
+      _modelTextAccumulator = '';
+      _translationAudioChunks = [];
+      
+      // Add initial message bubble in "streaming" state
+      final newMessage = ChatMessage(
+        id: _currentMessageId!,
+        type: MessageType.voice,
+        status: MessageStatus.streaming,
+        sourceLanguage: state.sourceLanguage,
+        targetLanguage: state.targetLanguage,
+        timestamp: DateTime.now(),
+      );
+      state = state.copyWith(
+        messages: [...state.messages, newMessage],
+        isRecording: true,
+        recordingDuration: Duration.zero,
+      );
+      
+      _startRecordingTimer();
+      _startAudioStreaming(audioStream);
+      AppLogger.d('Real-time streaming recording started');
+    } else {
+      state = state.copyWith(error: 'Failed to start real-time recording');
+      AppLogger.e('Failed to start real-time recording');
+      // Fallback to batch
+      await _startBatchRecording();
+    }
+  }
+
   /// Start batch recording (file-based, for when WebSocket is unavailable)
   Future<void> _startBatchRecording() async {
     state = state.copyWith(isConnecting: false, isConnected: false);
