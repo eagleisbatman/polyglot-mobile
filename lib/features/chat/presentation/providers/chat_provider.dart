@@ -236,6 +236,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
   /// Start recording with real-time streaming
   Future<void> startRecording() async {
+    AppLogger.d('startRecording called. Current conversationId: ${state.conversationId}');
+    
     _analytics.trackEvent(
       AnalyticsEvents.voiceRecordingStarted,
       properties: {
