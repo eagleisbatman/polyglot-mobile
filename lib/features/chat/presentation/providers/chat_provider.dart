@@ -530,7 +530,9 @@ class ChatNotifier extends StateNotifier<ChatState> {
         
         // Store conversationId for future messages in this session
         if (response.data!.conversationId.isNotEmpty) {
+          AppLogger.d('Storing conversationId in state: ${response.data!.conversationId}');
           state = state.copyWith(conversationId: response.data!.conversationId);
+          AppLogger.d('State updated. Current conversationId: ${state.conversationId}');
         }
         
         final updatedMessage = ChatMessage(
