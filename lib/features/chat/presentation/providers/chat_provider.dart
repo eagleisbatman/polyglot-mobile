@@ -181,46 +181,13 @@ class ChatNotifier extends StateNotifier<ChatState> {
       },
     );
 
-    state = state.copyWith(isConnecting: true, error: null);
+    state = state.copyWith(isConnecting: false, error: null);
     _userAudioChunks = []; // Reset audio chunks
 
-    // Try real-time WebSocket first, but timeout quickly to fall back to batch
-    AppLogger.d('Attempting WebSocket connection for real-time translation...');
-    final connected = await _realtimeService.connect(
-      sourceLanguage: state.sourceLanguage,
-      targetLanguage: state.targetLanguage,
-    );
-
-    if (connected) {
-      AppLogger.d('WebSocket connected, starting streaming recording');
-      _setupRealtimeListeners();
-      state = state.copyWith(isConnecting: false, isConnected: true);
-
-      // Start streaming recording for real-time
-      final audioStream = await _audioService.startStreamingRecording();
-      if (audioStream != null) {
-        _currentMessageId = DateTime.now().millisecondsSinceEpoch.toString();
-        _userTextAccumulator = '';
-        _modelTextAccumulator = '';
-        _translationAudioChunks = [];
-        
-        state = state.copyWith(
-          isRecording: true,
-          recordingDuration: Duration.zero,
-        );
-        _startRecordingTimer();
-        _startAudioStreaming(audioStream);
-      } else {
-        // Streaming recording failed, fall back to batch
-        AppLogger.w('Streaming recording failed, falling back to batch mode');
-        await _realtimeService.disconnect();
-        await _startBatchRecording();
-      }
-    } else {
-      // WebSocket not available, use batch recording
-      AppLogger.d('WebSocket unavailable, using batch recording');
-      await _startBatchRecording();
-    }
+    // TODO: Re-enable WebSocket when backend supports it properly
+    // For now, go straight to batch recording for reliability
+    AppLogger.d('Starting batch recording (WebSocket disabled temporarily)');
+    await _startBatchRecording();
   }
   
   /// Start batch recording (file-based, for when WebSocket is unavailable)
@@ -397,6 +364,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
   /// Batch translation fallback (when real-time is unavailable)
   Future<void> _translateAudioBatch(String audioPath) async {
+    AppLogger.i('Starting batch translation for: $audioPath');
     final messageId = DateTime.now().millisecondsSinceEpoch.toString();
     
     final newMessage = ChatMessage(
@@ -412,10 +380,12 @@ class ChatNotifier extends StateNotifier<ChatState> {
     state = state.copyWith(
       messages: [...state.messages, newMessage],
     );
+    AppLogger.d('Message added to state, encoding audio...');
 
     try {
       final base64Audio = await _audioService.getRecordingAsBase64();
       if (base64Audio == null) {
+        AppLogger.e('Failed to encode audio to base64');
         _updateMessage(messageId, (m) => m.copyWith(
           status: MessageStatus.error,
           error: 'Failed to encode audio',
@@ -423,12 +393,16 @@ class ChatNotifier extends StateNotifier<ChatState> {
         state = state.copyWith(isProcessing: false);
         return;
       }
+      
+      AppLogger.d('Audio encoded, size: ${base64Audio.length} chars. Calling API...');
 
       final response = await _apiService.translateVoice(
         audioBase64: base64Audio,
         sourceLanguage: state.sourceLanguage,
         targetLanguage: state.targetLanguage,
       );
+      
+      AppLogger.d('API response: success=${response.success}, error=${response.error}');
 
       if (response.success && response.data != null) {
         final updatedMessage = ChatMessage(

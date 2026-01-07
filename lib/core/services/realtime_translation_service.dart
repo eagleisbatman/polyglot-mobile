@@ -57,8 +57,8 @@ class RealtimeTranslationService {
       final completer = Completer<bool>();
       Timer? timeoutTimer;
       
-      // Set a 5 second timeout for connection
-      timeoutTimer = Timer(const Duration(seconds: 5), () {
+      // Set a 2 second timeout for connection (fail fast)
+      timeoutTimer = Timer(const Duration(seconds: 2), () {
         if (!completer.isCompleted) {
           AppLogger.w('WebSocket connection timeout');
           completer.complete(false);
