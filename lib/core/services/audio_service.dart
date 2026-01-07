@@ -20,8 +20,15 @@ class AudioService {
   StreamController<Uint8List>? _audioChunkController;
   StreamSubscription<RecordState>? _recordStateSubscription;
   
+  // Amplitude stream for waveform visualization
+  StreamController<double>? _amplitudeController;
+  Timer? _amplitudeTimer;
+  
   /// Stream of audio chunks for real-time processing
   Stream<Uint8List>? get audioChunkStream => _audioChunkController?.stream;
+  
+  /// Stream of amplitude values (0.0 to 1.0) for waveform visualization
+  Stream<double>? get amplitudeStream => _amplitudeController?.stream;
 
   /// Start recording with real-time streaming
   /// Returns a stream of audio chunks for real-time processing
@@ -84,6 +91,10 @@ class AudioService {
         );
         _isRecording = true;
         _isStreaming = false;
+        
+        // Start amplitude monitoring for waveform
+        _startAmplitudeMonitoring();
+        
         return true;
       }
       return false;
@@ -92,10 +103,41 @@ class AudioService {
       return false;
     }
   }
+  
+  /// Start monitoring audio amplitude for waveform visualization
+  void _startAmplitudeMonitoring() {
+    _amplitudeController = StreamController<double>.broadcast();
+    
+    // Poll amplitude every 100ms
+    _amplitudeTimer = Timer.periodic(const Duration(milliseconds: 100), (_) async {
+      if (_isRecording) {
+        try {
+          final amplitude = await _recorder.getAmplitude();
+          // Convert dBFS to 0-1 range (dBFS is typically -160 to 0)
+          // -40 dB is quiet, 0 dB is max
+          final normalized = ((amplitude.current + 40) / 40).clamp(0.0, 1.0);
+          _amplitudeController?.add(normalized);
+        } catch (e) {
+          // Ignore amplitude errors
+        }
+      }
+    });
+  }
+  
+  /// Stop amplitude monitoring
+  void _stopAmplitudeMonitoring() {
+    _amplitudeTimer?.cancel();
+    _amplitudeTimer = null;
+    _amplitudeController?.close();
+    _amplitudeController = null;
+  }
 
   /// Stop recording (both streaming and file-based)
   Future<String?> stopRecording() async {
     try {
+      // Stop amplitude monitoring
+      _stopAmplitudeMonitoring();
+      
       if (_isRecording) {
         String? path;
         

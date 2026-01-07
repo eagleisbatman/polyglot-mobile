@@ -101,6 +101,9 @@ class ChatNotifier extends StateNotifier<ChatState> {
   String? _currentInteractionId;
   List<Uint8List> _translationAudioChunks = [];
   List<Uint8List> _userAudioChunks = []; // Store user audio for saving
+  
+  /// Stream of audio amplitude for waveform visualization
+  Stream<double>? get amplitudeStream => _audioService.amplitudeStream;
 
   ChatNotifier(
     this._audioService,
@@ -115,6 +118,15 @@ class ChatNotifier extends StateNotifier<ChatState> {
   }
 
   Future<void> _loadHistory() async {
+    // Start with fresh chat - don't load history into main view
+    // History is available through the history screen
+    // Keep state empty for a new conversation each time
+    AppLogger.d('Starting new chat session (history available in history screen)');
+    state = state.copyWith(messages: []);
+    return;
+    
+    // Old code - kept for reference
+    /*
     // Try to fetch from backend first, fall back to local
     try {
       final history = await _historySync.fetchHistory();
@@ -125,6 +137,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     } catch (e) {
       AppLogger.d('Failed to fetch from backend: $e');
     }
+    */
     
     // Fall back to local storage
     final history = await _historyStorage.getHistory();
@@ -455,6 +468,18 @@ class ChatNotifier extends StateNotifier<ChatState> {
   /// Play user's recorded audio
   Future<void> playUserAudio(String messageId) async {
     try {
+      // If already playing this audio, stop it
+      if (state.currentlyPlayingId == '${messageId}_user') {
+        await _playerService.stop();
+        state = state.copyWith(currentlyPlayingId: null);
+        return;
+      }
+      
+      // Stop any currently playing audio first
+      if (state.currentlyPlayingId != null) {
+        await _playerService.stop();
+      }
+      
       final message = state.messages.firstWhere(
         (m) => m.id == messageId,
         orElse: () => throw Exception('Message not found'),
@@ -491,23 +516,55 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
   /// Play translation audio (TTS)
   Future<void> playTranslationAudio(String messageId) async {
-    final message = state.messages.firstWhere(
-      (m) => m.id == messageId,
-      orElse: () => throw Exception('Message not found'),
-    );
-    
-    if (message.translationAudioPath != null) {
-      state = state.copyWith(currentlyPlayingId: '${messageId}_translation');
-      await _playerService.playFile(message.translationAudioPath!);
+    try {
+      // If already playing this audio, stop it
+      if (state.currentlyPlayingId == '${messageId}_translation') {
+        await _playerService.stop();
+        state = state.copyWith(currentlyPlayingId: null);
+        return;
+      }
       
-      _playerService.onPlayerStateChanged.listen((playerState) {
-        if (playerState == PlayerState.completed || playerState == PlayerState.stopped) {
-          state = state.copyWith(currentlyPlayingId: null);
+      // Stop any currently playing audio first
+      if (state.currentlyPlayingId != null) {
+        await _playerService.stop();
+      }
+      
+      final message = state.messages.firstWhere(
+        (m) => m.id == messageId,
+        orElse: () => throw Exception('Message not found'),
+      );
+      
+      AppLogger.d('Playing translation audio for message $messageId');
+      
+      if (message.translationAudioPath != null) {
+        // Check if file exists
+        final file = File(message.translationAudioPath!);
+        if (!await file.exists()) {
+          AppLogger.e('Translation audio file not found: ${message.translationAudioPath}');
+          // Fall through to TTS
+        } else {
+          state = state.copyWith(currentlyPlayingId: '${messageId}_translation');
+          await _playerService.playFile(message.translationAudioPath!);
+          
+          _playerService.onPlayerStateChanged.listen((playerState) {
+            if (playerState == PlayerState.completed || playerState == PlayerState.stopped) {
+              if (state.currentlyPlayingId == '${messageId}_translation') {
+                state = state.copyWith(currentlyPlayingId: null);
+              }
+            }
+          });
+          return;
         }
-      });
-    } else if (message.translatedContent != null) {
-      // TODO: Generate TTS for the translation text
-      state = state.copyWith(error: 'TTS audio not available');
+      }
+      
+      // If no audio file, try TTS
+      if (message.translatedContent != null) {
+        AppLogger.d('No audio file, would use TTS for: ${message.translatedContent}');
+        // TODO: Implement TTS for translation
+        state = state.copyWith(error: 'TTS audio not yet implemented');
+      }
+    } catch (e) {
+      AppLogger.e('Error playing translation audio: $e');
     }
   }
 

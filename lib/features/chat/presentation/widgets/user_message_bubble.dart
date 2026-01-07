@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/chat_message.dart';
+import 'audio_play_button.dart';
 
 /// Bubble for user-sent content (voice input, image, document)
 class UserMessageBubble extends StatelessWidget {
@@ -70,10 +71,14 @@ class UserMessageBubble extends StatelessWidget {
             ),
             // Play audio button for voice messages
             if (type == MessageType.voice && hasAudio && onPlayAudio != null)
-              _PlayUserAudioButton(
-                theme: theme,
-                isPlaying: isPlaying,
-                onPressed: onPlayAudio!,
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: AudioPlayButton(
+                  label: 'Play My Voice',
+                  isPlaying: isPlaying,
+                  onPressed: onPlayAudio!,
+                  color: theme.colorScheme.secondary,
+                ),
               ),
           ],
         ),
@@ -194,51 +199,4 @@ class _DocumentChip extends StatelessWidget {
   }
 }
 
-class _PlayUserAudioButton extends StatelessWidget {
-  final ThemeData theme;
-  final bool isPlaying;
-  final VoidCallback onPressed;
-
-  const _PlayUserAudioButton({
-    required this.theme,
-    required this.isPlaying,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.secondary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isPlaying ? Icons.stop : Icons.play_arrow,
-                size: 16,
-                color: theme.colorScheme.secondary,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                isPlaying ? 'Stop' : 'Play my voice',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.secondary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 

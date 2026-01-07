@@ -320,6 +320,7 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
       isRecording: state.isRecording,
       isProcessing: state.isProcessing,
       recordingDuration: _formatDuration(state.recordingDuration),
+      amplitudeStream: state.isRecording ? notifier.amplitudeStream : null,
       onMicPressed: state.isRecording
           ? notifier.stopRecording
           : notifier.startRecording,

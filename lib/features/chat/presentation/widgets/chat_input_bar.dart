@@ -10,6 +10,8 @@ class ChatInputBar extends StatelessWidget {
   final VoidCallback onCameraPressed;
   final VoidCallback onAttachmentPressed;
   final VoidCallback? onCancelRecording;
+  /// Stream of amplitude values for real waveform visualization
+  final Stream<double>? amplitudeStream;
 
   const ChatInputBar({
     super.key,
@@ -20,6 +22,7 @@ class ChatInputBar extends StatelessWidget {
     required this.onCameraPressed,
     required this.onAttachmentPressed,
     this.onCancelRecording,
+    this.amplitudeStream,
   });
 
   @override
@@ -99,8 +102,9 @@ class ChatInputBar extends StatelessWidget {
             AudioWaveform(
               isActive: true,
               color: theme.colorScheme.primary,
-              height: 24,
-              barCount: 5,
+              height: 32,
+              barCount: 7,
+              amplitudeStream: amplitudeStream,
             ),
             const SizedBox(height: 4),
             Text(
@@ -217,4 +221,3 @@ class _MicButton extends StatelessWidget {
     );
   }
 }
-

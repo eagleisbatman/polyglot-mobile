@@ -32,9 +32,16 @@ class ChatMessageBubble extends StatelessWidget {
     final showUserBubble = (message.userContent != null && message.userContent!.isNotEmpty) ||
                            (message.type == MessageType.voice && message.userAudioPath != null);
     
-    // For voice messages without transcription yet, show placeholder
+    // For voice messages without transcription yet, show "Transcribing..."
     final userContent = message.userContent ?? 
-        (message.status == MessageStatus.sending ? 'Processing...' : 'Voice message');
+        (message.status == MessageStatus.sending ? 'Transcribing...' : 'Voice message');
+    
+    // Only show translation bubble if:
+    // 1. We have translated content, OR
+    // 2. We have user content AND still processing (transcription done, now translating)
+    final hasUserContent = message.userContent != null && message.userContent!.isNotEmpty;
+    final showTranslationBubble = message.translatedContent != null || 
+        (hasUserContent && message.status == MessageStatus.sending);
     
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -53,10 +60,11 @@ class ChatMessageBubble extends StatelessWidget {
               onPlayAudio: onPlayUserAudio,
             ),
           
-          const SizedBox(height: 8),
+          if (showUserBubble && showTranslationBubble)
+            const SizedBox(height: 8),
           
-          // Translation response (only show if we have content or it's processing)
-          if (message.translatedContent != null || message.status == MessageStatus.sending)
+          // Translation response
+          if (showTranslationBubble)
             TranslationMessageBubble(
               message: message,
               onPlayAudio: onPlayTranslationAudio,

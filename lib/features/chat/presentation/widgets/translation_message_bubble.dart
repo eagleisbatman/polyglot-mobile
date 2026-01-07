@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/chat_message.dart';
 import 'streaming_dots.dart';
+import 'audio_play_button.dart';
 
 /// Bubble for AI translation responses
 class TranslationMessageBubble extends StatelessWidget {
@@ -196,10 +197,15 @@ class _TranslationContent extends StatelessWidget {
         ),
         // Show play button for voice messages
         if (message.type == MessageType.voice && hasAudio && onPlayAudio != null)
-          _PlayAudioButton(
-            theme: theme, 
-            isPlaying: isPlaying,
-            onPressed: onPlayAudio!,
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: AudioPlayButton(
+              label: 'Play Translation',
+              isPlaying: isPlaying,
+              onPressed: onPlayAudio!,
+              color: theme.colorScheme.primary,
+              playIcon: Icons.volume_up_rounded,
+            ),
           ),
         if (isStreaming) ...[
           const SizedBox(height: 4),
@@ -210,51 +216,4 @@ class _TranslationContent extends StatelessWidget {
   }
 }
 
-class _PlayAudioButton extends StatelessWidget {
-  final ThemeData theme;
-  final bool isPlaying;
-  final VoidCallback onPressed;
-
-  const _PlayAudioButton({
-    required this.theme,
-    this.isPlaying = false,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isPlaying ? Icons.stop : Icons.volume_up,
-                size: 16,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                isPlaying ? 'Stop' : 'Play translation',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
