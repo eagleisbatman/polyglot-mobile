@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/test_tags.dart';
-import '../../../../shared/widgets/error_banner.dart';
+import '../../../../core/services/history_api_service.dart';
 import '../providers/history_provider.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
@@ -34,34 +34,20 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   }
 
   Future<void> _handleDelete(String id) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Item'),
-        content: const Text('Are you sure you want to delete this item?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+    final success = await ref.read(historyProvider.notifier).deleteItem(id);
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Deleted'),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () {
+              // TODO: Implement undo
+            },
           ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && mounted) {
-      final success = await ref.read(historyProvider.notifier).deleteItem(id);
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Item deleted successfully')),
-        );
-      }
+        ),
+      );
     }
   }
 
@@ -69,190 +55,274 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   Widget build(BuildContext context) {
     final historyState = ref.watch(historyProvider);
     final notifier = ref.read(historyProvider.notifier);
+    final theme = Theme.of(context);
 
     return Scaffold(
       key: const Key(TestTags.historyScreen),
       appBar: AppBar(
-        title: const Text('Translation History'),
-        actions: [
-          PopupMenuButton<String>(
-            key: const Key(TestTags.historyFilterButton),
-            onSelected: (value) {
-              notifier.filterByType(value);
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'all',
-                child: Text('All'),
+        title: const Text('History'),
+        centerTitle: false,
+      ),
+      body: Column(
+        children: [
+          // Filter chips
+          _buildFilterChips(historyState.filterType, notifier, theme),
+          
+          // Error state
+          if (historyState.error != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, 
+                      color: theme.colorScheme.onErrorContainer, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        historyState.error!,
+                        style: TextStyle(color: theme.colorScheme.onErrorContainer),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => notifier.refresh(),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
               ),
-              const PopupMenuItem(
-                value: 'voice',
-                child: Text('Voice'),
-              ),
-              const PopupMenuItem(
-                value: 'vision',
-                child: Text('Vision'),
-              ),
-              const PopupMenuItem(
-                value: 'document',
-                child: Text('Document'),
-              ),
-            ],
-            child: const Icon(Icons.filter_list),
+            ),
+          
+          // Content
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () => notifier.refresh(),
+              child: _buildContent(historyState, theme),
+            ),
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () => notifier.refresh(),
+    );
+  }
+
+  Widget _buildFilterChips(String activeFilter, HistoryNotifier notifier, ThemeData theme) {
+    final filters = [
+      ('all', 'All', Icons.apps),
+      ('voice', 'Voice', Icons.mic),
+      ('vision', 'Camera', Icons.camera_alt),
+      ('document', 'Docs', Icons.description),
+    ];
+
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: filters.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final (value, label, icon) = filters[index];
+          final isActive = activeFilter == value;
+          
+          return FilterChip(
+            key: Key('${TestTags.historyFilterButton}_$value'),
+            selected: isActive,
+            label: Text(label),
+            avatar: Icon(icon, size: 16),
+            onSelected: (_) => notifier.filterByType(value),
+            showCheckmark: false,
+            side: BorderSide.none,
+            backgroundColor: theme.colorScheme.surfaceContainerHighest,
+            selectedColor: theme.colorScheme.primaryContainer,
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildContent(HistoryState historyState, ThemeData theme) {
+    // Loading state
+    if (historyState.items.isEmpty && historyState.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    // Empty state
+    if (historyState.items.isEmpty && !historyState.isLoading) {
+      return Center(
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (historyState.error != null)
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: ErrorBanner(
-                  message: historyState.error!,
-                  onRetry: () => notifier.refresh(),
-                ),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                shape: BoxShape.circle,
               ),
-            // Initial loading state (empty items, loading)
-            if (historyState.items.isEmpty && historyState.isLoading)
-              const Expanded(
-                child: Center(
-                  child: CircularProgressIndicator(),
-                ),
-              )
-            // Empty state (no items, not loading)
-            else if (historyState.items.isEmpty && !historyState.isLoading)
-              Expanded(
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+              child: Icon(
+                Icons.history,
+                size: 48,
+                color: theme.colorScheme.outline,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'No translations yet',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Start a translation to see it here',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.outline,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Items list
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+      itemCount: historyState.items.length,
+      itemBuilder: (context, index) {
+        final item = historyState.items[index];
+        
+        return Dismissible(
+          key: Key(item.id),
+          direction: DismissDirection.endToStart,
+          background: Container(
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 20),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.error,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.delete, color: theme.colorScheme.onError),
+          ),
+          onDismissed: (_) => _handleDelete(item.id),
+          child: _buildHistoryCard(item, theme),
+        );
+      },
+    );
+  }
+
+  Widget _buildHistoryCard(HistoryItem item, ThemeData theme) {
+    final typeIcon = _getTypeIconData(item.type);
+    
+    return GestureDetector(
+      onTap: () {
+        // TODO: Open translation detail or load into chat
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Opening translation details coming soon'),
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 1),
+          ),
+        );
+      },
+      child: Container(
+        key: Key('${TestTags.historyItem}_${item.id}'),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top row: type badge, time
+            Row(
+              children: [
+                // Type badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.history,
-                        size: 64,
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
-                      const SizedBox(height: 16),
+                      Icon(typeIcon, size: 14, 
+                        color: theme.colorScheme.onPrimaryContainer),
+                      const SizedBox(width: 4),
                       Text(
-                        'No history yet',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Your translation history will appear here',
-                        style: Theme.of(context).textTheme.bodyMedium,
+                        '${item.sourceLanguage?.toUpperCase() ?? 'AUTO'} → ${item.targetLanguage.toUpperCase()}',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
                 ),
-              )
-            // Items list
-            else
-              Expanded(
-                child: ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: historyState.items.length +
-                      (historyState.isLoading ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index >= historyState.items.length) {
-                      return const Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Center(child: CircularProgressIndicator()),
-                      );
-                    }
-
-                    final item = historyState.items[index];
-                    return Card(
-                      key: Key('${TestTags.historyItem}_${item.id}'),
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Header row: icon, languages, time, menu
-                            Row(
-                              children: [
-                                _getTypeIcon(item.type),
-                                const SizedBox(width: 8),
-                                Text(
-                                  '${item.sourceLanguage ?? 'Auto'} → ${item.targetLanguage.toUpperCase()}',
-                                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                    color: Theme.of(context).colorScheme.primary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const Spacer(),
-                                Text(
-                                  _formatDate(item.createdAt),
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context).colorScheme.outline,
-                                  ),
-                                ),
-                                PopupMenuButton(
-                                  padding: EdgeInsets.zero,
-                                  iconSize: 20,
-                                  itemBuilder: (context) => [
-                                    PopupMenuItem(
-                                      child: const Text('Delete'),
-                                      onTap: () {
-                                        Future.delayed(Duration.zero, () {
-                                          _handleDelete(item.id);
-                                        });
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            // Transcription (original text)
-                            Text(
-                              item.displayTitle,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w500,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            // Translation
-                            if (item.displaySubtitle != null) ...[
-                              const SizedBox(height: 6),
-                              Text(
-                                item.displaySubtitle!,
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+                const Spacer(),
+                Text(
+                  _formatDate(item.createdAt),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.outline,
+                  ),
                 ),
+              ],
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // Original text
+            Text(
+              item.displayTitle,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+                height: 1.4,
               ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            
+            // Translation
+            if (item.displaySubtitle != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                item.displaySubtitle!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  height: 1.4,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Icon _getTypeIcon(String type) {
+  IconData _getTypeIconData(String type) {
     switch (type) {
       case 'voice':
-        return const Icon(Icons.mic);
+        return Icons.mic;
       case 'vision':
-        return const Icon(Icons.camera_alt);
+        return Icons.camera_alt;
       case 'document':
-        return const Icon(Icons.description);
+        return Icons.description;
       default:
-        return const Icon(Icons.translate);
+        return Icons.translate;
     }
   }
 
@@ -265,16 +335,15 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         if (difference.inMinutes == 0) {
           return 'Just now';
         }
-        return '${difference.inMinutes} minutes ago';
+        return '${difference.inMinutes}m ago';
       }
-      return '${difference.inHours} hours ago';
+      return '${difference.inHours}h ago';
     } else if (difference.inDays == 1) {
       return 'Yesterday';
     } else if (difference.inDays < 7) {
-      return '${difference.inDays} days ago';
+      return '${difference.inDays}d ago';
     } else {
-      return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      return '${date.day}/${date.month}/${date.year}';
     }
   }
 }
-
