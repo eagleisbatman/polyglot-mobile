@@ -114,7 +114,15 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   onRetry: () => notifier.refresh(),
                 ),
               ),
-            if (historyState.items.isEmpty && !historyState.isLoading)
+            // Initial loading state (empty items, loading)
+            if (historyState.items.isEmpty && historyState.isLoading)
+              const Expanded(
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            // Empty state (no items, not loading)
+            else if (historyState.items.isEmpty && !historyState.isLoading)
               Expanded(
                 child: Center(
                   child: Column(
@@ -139,6 +147,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   ),
                 ),
               )
+            // Items list
             else
               Expanded(
                 child: ListView.builder(
