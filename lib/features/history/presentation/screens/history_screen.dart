@@ -21,6 +21,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    // Refresh history when screen opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(historyProvider.notifier).refresh();
+    });
   }
 
   @override
