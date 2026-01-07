@@ -8,6 +8,7 @@ import '../../../../core/services/audio_service.dart';
 import '../../../../core/services/audio_player_service.dart';
 import '../../../../core/services/realtime_translation_service.dart';
 import '../../../../core/services/history_storage_service.dart';
+import '../../../../core/services/history_sync_service.dart';
 import '../../../../core/services/voice_api_service.dart';
 import '../../../../core/analytics/analytics_service.dart';
 import '../../../../core/analytics/analytics_events.dart';
@@ -19,6 +20,7 @@ final audioServiceProvider = Provider<AudioService>((ref) => AudioService());
 final audioPlayerProvider = Provider<AudioPlayerService>((ref) => AudioPlayerService());
 final realtimeServiceProvider = Provider<RealtimeTranslationService>((ref) => RealtimeTranslationService());
 final historyStorageProvider = Provider<HistoryStorageService>((ref) => HistoryStorageService());
+final historySyncProvider = Provider<HistorySyncService>((ref) => HistorySyncService());
 final voiceApiProvider = Provider<VoiceApiService>((ref) => VoiceApiService());
 
 class ChatState {
@@ -86,6 +88,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
   final AudioPlayerService _playerService;
   final RealtimeTranslationService _realtimeService;
   final HistoryStorageService _historyStorage;
+  final HistorySyncService _historySync;
   final VoiceApiService _apiService;
   final AnalyticsService _analytics;
   
@@ -94,6 +97,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
   String _userTextAccumulator = '';
   String _modelTextAccumulator = '';
   String? _currentMessageId;
+  String? _currentInteractionId;
   List<Uint8List> _translationAudioChunks = [];
 
   ChatNotifier(
@@ -101,6 +105,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     this._playerService,
     this._realtimeService,
     this._historyStorage,
+    this._historySync,
     this._apiService,
     this._analytics,
   ) : super(const ChatState()) {
@@ -108,7 +113,25 @@ class ChatNotifier extends StateNotifier<ChatState> {
   }
 
   Future<void> _loadHistory() async {
+    // Try to fetch from backend first, fall back to local
+    try {
+      final history = await _historySync.fetchHistory();
+      if (history.isNotEmpty) {
+        state = state.copyWith(messages: history);
+        return;
+      }
+    } catch (e) {
+      print('Failed to fetch from backend: $e');
+    }
+    
+    // Fall back to local storage
     final history = await _historyStorage.getHistory();
+    state = state.copyWith(messages: history);
+  }
+  
+  /// Refresh history from backend
+  Future<void> refreshHistory() async {
+    final history = await _historySync.fetchHistory();
     state = state.copyWith(messages: history);
   }
 
@@ -211,6 +234,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
         case AudioOutputEvent(:final data):
           _translationAudioChunks.add(data);
           _playerService.queueAudioChunk(data);
+          break;
+        case SessionSavedEvent(:final interactionId):
+          _currentInteractionId = interactionId;
+          _uploadAudioFiles(interactionId);
           break;
         case TurnCompleteEvent():
           _finalizeTurn();
@@ -515,6 +542,26 @@ class ChatNotifier extends StateNotifier<ChatState> {
     _historyStorage.saveMessage(updatedMessage);
   }
 
+  /// Upload audio files to backend after session is saved
+  Future<void> _uploadAudioFiles(String interactionId) async {
+    try {
+      // Upload user's audio if available
+      final recordingPath = _audioService.currentRecordingPath;
+      if (recordingPath != null) {
+        await _historySync.uploadAudio(
+          filePath: recordingPath,
+          interactionId: interactionId,
+          type: 'user',
+        );
+      }
+      
+      // Refresh history to get updated URLs
+      await refreshHistory();
+    } catch (e) {
+      print('Error uploading audio files: $e');
+    }
+  }
+
   @override
   void dispose() {
     _recordingTimer?.cancel();
@@ -531,6 +578,7 @@ final chatProvider = StateNotifierProvider<ChatNotifier, ChatState>((ref) {
     ref.read(audioPlayerProvider),
     ref.read(realtimeServiceProvider),
     ref.read(historyStorageProvider),
+    ref.read(historySyncProvider),
     ref.read(voiceApiProvider),
     ref.read(analyticsServiceProvider),
   );

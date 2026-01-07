@@ -4,12 +4,13 @@ import 'dart:typed_data';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-/// Real-time translation service using Gemini Live API
-/// Handles bidirectional audio streaming for live translation
+/// Real-time translation service using backend WebSocket proxy
+/// Connects to our backend which proxies to Gemini Live API
 class RealtimeTranslationService {
   WebSocketChannel? _channel;
   StreamController<RealtimeEvent>? _eventController;
   bool _isConnected = false;
+  String? _sessionId;
   String _sourceLanguage = 'en';
   String _targetLanguage = 'hi';
 
@@ -17,8 +18,9 @@ class RealtimeTranslationService {
   Stream<RealtimeEvent>? get events => _eventController?.stream;
 
   bool get isConnected => _isConnected;
+  String? get sessionId => _sessionId;
 
-  /// Connect to Gemini Live API for real-time translation
+  /// Connect to backend WebSocket for real-time translation
   Future<bool> connect({
     required String sourceLanguage,
     required String targetLanguage,
@@ -29,23 +31,18 @@ class RealtimeTranslationService {
     try {
       _eventController = StreamController<RealtimeEvent>.broadcast();
       
-      final apiKey = dotenv.env['GEMINI_API_KEY'];
-      if (apiKey == null || apiKey.isEmpty) {
-        _eventController?.add(RealtimeEvent.error('GEMINI_API_KEY not configured'));
-        return false;
-      }
-
-      // Gemini Live API WebSocket endpoint
-      final wsUrl = Uri.parse(
-        'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=$apiKey'
-      );
-
-      _channel = WebSocketChannel.connect(wsUrl);
+      // Get backend URL from environment
+      final apiBaseUrl = dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000';
       
-      // Send initial setup message
-      final setupMessage = _createSetupMessage();
-      _channel!.sink.add(jsonEncode(setupMessage));
+      // Convert HTTP URL to WebSocket URL
+      final wsUrl = apiBaseUrl
+          .replaceFirst('https://', 'wss://')
+          .replaceFirst('http://', 'ws://');
+      
+      final fullWsUrl = Uri.parse('$wsUrl/api/v1/realtime');
 
+      _channel = WebSocketChannel.connect(fullWsUrl);
+      
       // Listen to responses
       _channel!.stream.listen(
         _handleMessage,
@@ -68,98 +65,79 @@ class RealtimeTranslationService {
     }
   }
 
-  Map<String, dynamic> _createSetupMessage() {
-    return {
-      'setup': {
-        'model': 'models/gemini-2.0-flash-exp',
-        'generation_config': {
-          'response_modalities': ['AUDIO', 'TEXT'],
-          'speech_config': {
-            'voice_config': {
-              'prebuilt_voice_config': {
-                'voice_name': 'Kore'
-              }
-            }
-          }
-        },
-        'system_instruction': {
-          'parts': [{
-            'text': '''You are an expert real-time interpreter.
-LANGUAGE PAIR: $_sourceLanguage → $_targetLanguage
-
-RULES:
-1. Listen to audio input in $_sourceLanguage
-2. Translate EVERYTHING to $_targetLanguage immediately
-3. Speak the translation out loud in $_targetLanguage
-4. Transcribe both the original speech and your translation
-5. Be natural and conversational in your translations
-6. If the speaker pauses, complete the current thought before translating
-7. Maintain the speaker's tone and intent
-
-DO NOT add commentary. JUST translate.'''
-          }]
-        },
-        'tools': [],
-      }
-    };
-  }
-
   void _handleMessage(dynamic message) {
     try {
       final data = jsonDecode(message as String) as Map<String, dynamic>;
-      
-      // Handle setup complete
-      if (data.containsKey('setupComplete')) {
-        _eventController?.add(RealtimeEvent.ready());
-        return;
-      }
+      final type = data['type'] as String?;
 
-      // Handle server content
-      final serverContent = data['serverContent'] as Map<String, dynamic>?;
-      if (serverContent != null) {
-        // Input transcription (user's speech)
-        final inputTranscription = serverContent['inputTranscription'] as Map<String, dynamic>?;
-        if (inputTranscription != null) {
-          final text = inputTranscription['text'] as String?;
+      switch (type) {
+        case 'session_id':
+          _sessionId = data['sessionId'] as String?;
+          // Send setup message with language configuration
+          _sendSetup();
+          break;
+          
+        case 'ready':
+          _eventController?.add(RealtimeEvent.ready());
+          break;
+          
+        case 'user_transcription':
+          final text = data['text'] as String?;
           if (text != null && text.isNotEmpty) {
             _eventController?.add(RealtimeEvent.userTranscription(text));
           }
-        }
-
-        // Output transcription (model's translation text)
-        final outputTranscription = serverContent['outputTranscription'] as Map<String, dynamic>?;
-        if (outputTranscription != null) {
-          final text = outputTranscription['text'] as String?;
+          break;
+          
+        case 'model_transcription':
+          final text = data['text'] as String?;
           if (text != null && text.isNotEmpty) {
             _eventController?.add(RealtimeEvent.modelTranscription(text));
           }
-        }
-
-        // Model audio output
-        final modelTurn = serverContent['modelTurn'] as Map<String, dynamic>?;
-        if (modelTurn != null) {
-          final parts = modelTurn['parts'] as List<dynamic>?;
-          if (parts != null && parts.isNotEmpty) {
-            final inlineData = parts[0]['inlineData'] as Map<String, dynamic>?;
-            if (inlineData != null) {
-              final audioData = inlineData['data'] as String?;
-              if (audioData != null) {
-                final audioBytes = base64Decode(audioData);
-                _eventController?.add(RealtimeEvent.audioOutput(audioBytes));
-              }
-            }
+          break;
+          
+        case 'audio':
+          final audioData = data['data'] as String?;
+          if (audioData != null) {
+            final audioBytes = base64Decode(audioData);
+            _eventController?.add(RealtimeEvent.audioOutput(audioBytes));
           }
-        }
-
-        // Turn complete
-        final turnComplete = serverContent['turnComplete'] as bool?;
-        if (turnComplete == true) {
+          break;
+          
+        case 'turn_complete':
           _eventController?.add(RealtimeEvent.turnComplete());
-        }
+          break;
+          
+        case 'session_saved':
+          final interactionId = data['interactionId'] as String?;
+          if (interactionId != null) {
+            _eventController?.add(RealtimeEvent.sessionSaved(interactionId));
+          }
+          break;
+          
+        case 'error':
+          final errorMessage = data['message'] as String? ?? 'Unknown error';
+          _eventController?.add(RealtimeEvent.error(errorMessage));
+          break;
+          
+        case 'gemini_disconnected':
+          _eventController?.add(RealtimeEvent.error('Translation service disconnected'));
+          break;
       }
     } catch (e) {
       print('Error parsing message: $e');
     }
+  }
+
+  void _sendSetup() {
+    if (_channel == null) return;
+    
+    final setupMessage = {
+      'type': 'setup',
+      'sourceLanguage': _sourceLanguage,
+      'targetLanguage': _targetLanguage,
+    };
+    
+    _channel!.sink.add(jsonEncode(setupMessage));
   }
 
   /// Send audio chunk for real-time processing
@@ -167,24 +145,30 @@ DO NOT add commentary. JUST translate.'''
     if (!_isConnected || _channel == null) return;
 
     final message = {
-      'realtimeInput': {
-        'mediaChunks': [{
-          'mimeType': 'audio/pcm;rate=16000',
-          'data': base64Encode(audioData),
-        }]
-      }
+      'type': 'audio',
+      'data': base64Encode(audioData),
     };
 
     _channel!.sink.add(jsonEncode(message));
   }
 
+  /// End the current session
+  void endSession() {
+    if (_channel == null) return;
+    
+    final message = {'type': 'end'};
+    _channel!.sink.add(jsonEncode(message));
+  }
+
   /// Disconnect from the service
   Future<void> disconnect() async {
+    endSession();
     _isConnected = false;
     await _channel?.sink.close();
     _channel = null;
     await _eventController?.close();
     _eventController = null;
+    _sessionId = null;
   }
 }
 
@@ -200,6 +184,7 @@ sealed class RealtimeEvent {
   factory RealtimeEvent.modelTranscription(String text) = ModelTranscriptionEvent;
   factory RealtimeEvent.audioOutput(Uint8List data) = AudioOutputEvent;
   factory RealtimeEvent.turnComplete() = TurnCompleteEvent;
+  factory RealtimeEvent.sessionSaved(String interactionId) = SessionSavedEvent;
 }
 
 class RealtimeConnectedEvent extends RealtimeEvent {
@@ -238,3 +223,7 @@ class TurnCompleteEvent extends RealtimeEvent {
   const TurnCompleteEvent();
 }
 
+class SessionSavedEvent extends RealtimeEvent {
+  final String interactionId;
+  const SessionSavedEvent(this.interactionId);
+}
