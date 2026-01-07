@@ -514,6 +514,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
       
       AppLogger.d('Audio encoded, size: ${base64Audio.length} chars. Calling API...');
 
+      AppLogger.d('Calling API with conversationId: ${state.conversationId}');
+      
       final response = await _apiService.translateVoice(
         audioBase64: base64Audio,
         sourceLanguage: state.sourceLanguage,
@@ -521,7 +523,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
         conversationId: state.conversationId,
       );
       
-      AppLogger.d('API response: success=${response.success}, error=${response.error}');
+      AppLogger.d('API response: success=${response.success}, error=${response.error}, conversationId=${response.data?.conversationId}');
 
       if (response.success && response.data != null) {
         AppLogger.d('Translation received, audioUrl: ${response.data!.translationAudioUrl}');
