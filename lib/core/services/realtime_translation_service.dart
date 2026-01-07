@@ -21,9 +21,11 @@ class RealtimeTranslationService {
   String? get sessionId => _sessionId;
 
   /// Connect to backend WebSocket for real-time translation
+  /// Optionally pass an auth token for authenticated connections
   Future<bool> connect({
     required String sourceLanguage,
     required String targetLanguage,
+    String? authToken,
   }) async {
     _sourceLanguage = sourceLanguage;
     _targetLanguage = targetLanguage;
@@ -39,7 +41,13 @@ class RealtimeTranslationService {
           .replaceFirst('https://', 'wss://')
           .replaceFirst('http://', 'ws://');
       
-      final fullWsUrl = Uri.parse('$wsUrl/api/v1/realtime');
+      // Add auth token as query parameter if provided
+      var fullWsUrl = Uri.parse('$wsUrl/api/v1/realtime');
+      if (authToken != null && authToken.isNotEmpty) {
+        fullWsUrl = fullWsUrl.replace(
+          queryParameters: {'token': authToken},
+        );
+      }
 
       _channel = WebSocketChannel.connect(fullWsUrl);
       

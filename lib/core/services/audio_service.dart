@@ -1,16 +1,72 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
 import '../constants/app_constants.dart';
 
+/// Audio service with real-time streaming support
 class AudioService {
   final AudioRecorder _recorder = AudioRecorder();
   final AudioPlayer _player = AudioPlayer();
   bool _isRecording = false;
+  bool _isStreaming = false;
   String? _currentRecordingPath;
+  
+  // Stream controller for real-time audio chunks
+  StreamController<Uint8List>? _audioChunkController;
+  StreamSubscription<RecordState>? _recordStateSubscription;
+  
+  /// Stream of audio chunks for real-time processing
+  Stream<Uint8List>? get audioChunkStream => _audioChunkController?.stream;
 
+  /// Start recording with real-time streaming
+  /// Returns a stream of audio chunks for real-time processing
+  Future<Stream<Uint8List>?> startStreamingRecording() async {
+    try {
+      if (!await _recorder.hasPermission()) {
+        return null;
+      }
+
+      // Create new stream controller
+      _audioChunkController = StreamController<Uint8List>.broadcast();
+      
+      // Start streaming recording
+      final audioStream = await _recorder.startStream(
+        RecordConfig(
+          encoder: AudioEncoder.pcm16bits,
+          sampleRate: 16000, // Gemini requires 16kHz
+          numChannels: 1,    // Mono
+        ),
+      );
+
+      _isRecording = true;
+      _isStreaming = true;
+
+      // Forward audio chunks to our controller
+      audioStream.listen(
+        (chunk) {
+          _audioChunkController?.add(chunk);
+        },
+        onError: (error) {
+          print('Audio stream error: $error');
+          _audioChunkController?.addError(error);
+        },
+        onDone: () {
+          print('Audio stream completed');
+        },
+      );
+
+      return _audioChunkController?.stream;
+    } catch (e) {
+      print('Failed to start streaming recording: $e');
+      return null;
+    }
+  }
+
+  /// Start recording to file (for batch processing fallback)
   Future<bool> startRecording() async {
     try {
       if (await _recorder.hasPermission()) {
@@ -18,7 +74,7 @@ class AudioService {
         _currentRecordingPath = '${directory.path}/recording_${DateTime.now().millisecondsSinceEpoch}.wav';
         
         await _recorder.start(
-          const RecordConfig(
+          RecordConfig(
             encoder: AudioEncoder.wav,
             sampleRate: AppConstants.audioSampleRate,
             numChannels: AppConstants.audioChannels,
@@ -26,28 +82,72 @@ class AudioService {
           path: _currentRecordingPath!,
         );
         _isRecording = true;
+        _isStreaming = false;
         return true;
       }
       return false;
     } catch (e) {
+      print('Failed to start recording: $e');
       return false;
     }
   }
 
+  /// Stop recording (both streaming and file-based)
   Future<String?> stopRecording() async {
     try {
       if (_isRecording) {
-        final path = await _recorder.stop();
+        String? path;
+        
+        if (_isStreaming) {
+          // For streaming, we need to save the audio separately
+          // The stream was processed in real-time
+          await _recorder.stop();
+          _audioChunkController?.close();
+          _audioChunkController = null;
+        } else {
+          // For file-based recording
+          path = await _recorder.stop();
+        }
+        
         _isRecording = false;
-        return path;
+        _isStreaming = false;
+        return path ?? _currentRecordingPath;
       }
       return null;
     } catch (e) {
+      print('Failed to stop recording: $e');
       _isRecording = false;
+      _isStreaming = false;
       return null;
     }
   }
 
+  /// Cancel current recording without saving
+  Future<void> cancelRecording() async {
+    try {
+      if (_isRecording) {
+        await _recorder.stop();
+        _audioChunkController?.close();
+        _audioChunkController = null;
+        _isRecording = false;
+        _isStreaming = false;
+        
+        // Delete the recording file if it exists
+        if (_currentRecordingPath != null) {
+          final file = File(_currentRecordingPath!);
+          if (await file.exists()) {
+            await file.delete();
+          }
+        }
+      }
+    } catch (e) {
+      print('Failed to cancel recording: $e');
+      _isRecording = false;
+      _isStreaming = false;
+    }
+  }
+
+  /// Get the recording as base64 (for batch processing)
   Future<String?> getRecordingAsBase64() async {
     try {
       if (_currentRecordingPath != null) {
@@ -80,13 +180,15 @@ class AudioService {
   }
 
   bool get isRecording => _isRecording;
+  bool get isStreaming => _isStreaming;
   
   /// Get the path of the current/last recording
   String? get currentRecordingPath => _currentRecordingPath;
 
   void dispose() {
+    _audioChunkController?.close();
+    _recordStateSubscription?.cancel();
     _recorder.dispose();
     _player.dispose();
   }
 }
-

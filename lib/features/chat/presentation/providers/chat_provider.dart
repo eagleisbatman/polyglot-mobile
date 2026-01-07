@@ -94,11 +94,13 @@ class ChatNotifier extends StateNotifier<ChatState> {
   
   Timer? _recordingTimer;
   StreamSubscription<RealtimeEvent>? _realtimeSubscription;
+  StreamSubscription<Uint8List>? _audioStreamSubscription;
   String _userTextAccumulator = '';
   String _modelTextAccumulator = '';
   String? _currentMessageId;
   String? _currentInteractionId;
   List<Uint8List> _translationAudioChunks = [];
+  List<Uint8List> _userAudioChunks = []; // Store user audio for saving
 
   ChatNotifier(
     this._audioService,
@@ -181,6 +183,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     );
 
     state = state.copyWith(isConnecting: true, error: null);
+    _userAudioChunks = []; // Reset audio chunks
 
     // Try real-time first, fall back to batch if unavailable
     final connected = await _realtimeService.connect(
@@ -191,31 +194,47 @@ class ChatNotifier extends StateNotifier<ChatState> {
     if (connected) {
       _setupRealtimeListeners();
       state = state.copyWith(isConnecting: false, isConnected: true);
-    }
 
-    // Start audio recording
-    final started = await _audioService.startRecording();
-    if (started) {
-      _currentMessageId = DateTime.now().millisecondsSinceEpoch.toString();
-      _userTextAccumulator = '';
-      _modelTextAccumulator = '';
-      _translationAudioChunks = [];
-      
-      state = state.copyWith(
-        isRecording: true,
-        recordingDuration: Duration.zero,
-      );
-      _startRecordingTimer();
-
-      // If connected, start streaming audio chunks
-      if (state.isConnected) {
-        _startAudioStreaming();
+      // Start streaming recording for real-time
+      final audioStream = await _audioService.startStreamingRecording();
+      if (audioStream != null) {
+        _currentMessageId = DateTime.now().millisecondsSinceEpoch.toString();
+        _userTextAccumulator = '';
+        _modelTextAccumulator = '';
+        _translationAudioChunks = [];
+        
+        state = state.copyWith(
+          isRecording: true,
+          recordingDuration: Duration.zero,
+        );
+        _startRecordingTimer();
+        _startAudioStreaming(audioStream);
+      } else {
+        state = state.copyWith(
+          isConnecting: false,
+          error: 'Failed to start audio streaming',
+        );
+        await _realtimeService.disconnect();
       }
     } else {
-      state = state.copyWith(
-        isConnecting: false,
-        error: 'Failed to start recording',
-      );
+      // Fall back to batch recording
+      state = state.copyWith(isConnecting: false);
+      
+      final started = await _audioService.startRecording();
+      if (started) {
+        _currentMessageId = DateTime.now().millisecondsSinceEpoch.toString();
+        _userTextAccumulator = '';
+        _modelTextAccumulator = '';
+        _translationAudioChunks = [];
+        
+        state = state.copyWith(
+          isRecording: true,
+          recordingDuration: Duration.zero,
+        );
+        _startRecordingTimer();
+      } else {
+        state = state.copyWith(error: 'Failed to start recording');
+      }
     }
   }
 
@@ -296,10 +315,23 @@ class ChatNotifier extends StateNotifier<ChatState> {
     _currentMessageId = DateTime.now().millisecondsSinceEpoch.toString();
   }
 
-  void _startAudioStreaming() {
-    // In a real implementation, we'd capture audio chunks and stream them
-    // For now, this is a placeholder for the audio streaming logic
-    // The audio service would need to emit chunks that we send to the realtime service
+  void _startAudioStreaming(Stream<Uint8List> audioStream) {
+    _audioStreamSubscription?.cancel();
+    _audioStreamSubscription = audioStream.listen(
+      (chunk) {
+        // Store chunk for later saving
+        _userAudioChunks.add(chunk);
+        // Send to realtime service for translation
+        _realtimeService.sendAudioChunk(chunk);
+      },
+      onError: (error) {
+        print('Audio streaming error: $error');
+        state = state.copyWith(error: 'Audio streaming error');
+      },
+      onDone: () {
+        print('Audio streaming completed');
+      },
+    );
   }
 
   void _startRecordingTimer() {
@@ -563,9 +595,11 @@ class ChatNotifier extends StateNotifier<ChatState> {
   }
 
   @override
+  @override
   void dispose() {
     _recordingTimer?.cancel();
     _realtimeSubscription?.cancel();
+    _audioStreamSubscription?.cancel();
     _realtimeService.disconnect();
     _playerService.dispose();
     super.dispose();
