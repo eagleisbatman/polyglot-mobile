@@ -28,15 +28,23 @@ class ChatMessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Show user bubble if there's content OR if it's a voice message with audio
+    final showUserBubble = (message.userContent != null && message.userContent!.isNotEmpty) ||
+                           (message.type == MessageType.voice && message.userAudioPath != null);
+    
+    // For voice messages without transcription yet, show placeholder
+    final userContent = message.userContent ?? 
+        (message.status == MessageStatus.sending ? 'Processing...' : 'Voice message');
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // User content (original input)
-          if (message.userContent != null && message.userContent!.isNotEmpty)
+          if (showUserBubble)
             UserMessageBubble(
-              content: message.userContent!,
+              content: userContent,
               type: message.type,
               imageUrl: message.imageUrl,
               documentName: message.documentName,
@@ -47,14 +55,56 @@ class ChatMessageBubble extends StatelessWidget {
           
           const SizedBox(height: 8),
           
-          // Translation response
-          TranslationMessageBubble(
-            message: message,
-            onPlayAudio: onPlayTranslationAudio,
-            onRetry: onRetry,
-            isPlaying: isPlayingTranslation,
-          ),
+          // Translation response (only show if we have content or it's processing)
+          if (message.translatedContent != null || message.status == MessageStatus.sending)
+            TranslationMessageBubble(
+              message: message,
+              onPlayAudio: onPlayTranslationAudio,
+              onRetry: onRetry,
+              isPlaying: isPlayingTranslation,
+            ),
+          
+          // Error state
+          if (message.status == MessageStatus.error && message.error != null)
+            _ErrorBubble(error: message.error!),
         ],
+      ),
+    );
+  }
+}
+
+class _ErrorBubble extends StatelessWidget {
+  final String error;
+  
+  const _ErrorBubble({required this.error});
+  
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(top: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.errorContainer,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 16, color: theme.colorScheme.error),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                error,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onErrorContainer,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

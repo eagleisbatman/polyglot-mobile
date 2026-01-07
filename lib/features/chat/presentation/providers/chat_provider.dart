@@ -1,5 +1,6 @@
 import 'package:polyglot_mobile/core/utils/app_logger.dart';
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -453,20 +454,38 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
   /// Play user's recorded audio
   Future<void> playUserAudio(String messageId) async {
-    final message = state.messages.firstWhere(
-      (m) => m.id == messageId,
-      orElse: () => throw Exception('Message not found'),
-    );
-    
-    if (message.userAudioPath != null) {
-      state = state.copyWith(currentlyPlayingId: '${messageId}_user');
-      await _playerService.playFile(message.userAudioPath!);
+    try {
+      final message = state.messages.firstWhere(
+        (m) => m.id == messageId,
+        orElse: () => throw Exception('Message not found'),
+      );
       
-      _playerService.onPlayerStateChanged.listen((playerState) {
-        if (playerState == PlayerState.completed || playerState == PlayerState.stopped) {
-          state = state.copyWith(currentlyPlayingId: null);
+      AppLogger.d('Playing user audio for message $messageId, path: ${message.userAudioPath}');
+      
+      if (message.userAudioPath != null) {
+        // Check if file exists
+        final file = File(message.userAudioPath!);
+        if (!await file.exists()) {
+          AppLogger.e('Audio file not found: ${message.userAudioPath}');
+          state = state.copyWith(error: 'Audio file not found');
+          return;
         }
-      });
+        
+        state = state.copyWith(currentlyPlayingId: '${messageId}_user');
+        await _playerService.playFile(message.userAudioPath!);
+        
+        _playerService.onPlayerStateChanged.listen((playerState) {
+          if (playerState == PlayerState.completed || playerState == PlayerState.stopped) {
+            if (state.currentlyPlayingId == '${messageId}_user') {
+              state = state.copyWith(currentlyPlayingId: null);
+            }
+          }
+        });
+      } else {
+        AppLogger.w('No audio path for message $messageId');
+      }
+    } catch (e) {
+      AppLogger.e('Error playing user audio: $e');
     }
   }
 

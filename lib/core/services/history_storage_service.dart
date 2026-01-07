@@ -31,7 +31,7 @@ class HistoryStorageService {
     await prefs.setString(_historyKey, jsonEncode(jsonList));
   }
 
-  /// Get all history
+  /// Get all history (returns oldest first for chat display)
   Future<List<ChatMessage>> getHistory() async {
     final prefs = await SharedPreferences.getInstance();
     final jsonString = prefs.getString(_historyKey);
@@ -42,9 +42,11 @@ class HistoryStorageService {
     
     try {
       final jsonList = jsonDecode(jsonString) as List<dynamic>;
-      return jsonList
+      final messages = jsonList
           .map((json) => ChatMessage.fromJson(json as Map<String, dynamic>))
           .toList();
+      // Reverse so oldest is first (for chat display - newest at bottom)
+      return messages.reversed.toList();
     } catch (e) {
       AppLogger.d('Error loading history: $e');
       return [];
