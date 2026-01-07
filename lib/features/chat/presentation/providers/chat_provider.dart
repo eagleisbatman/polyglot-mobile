@@ -425,6 +425,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
       AppLogger.d('API response: success=${response.success}, error=${response.error}');
 
       if (response.success && response.data != null) {
+        AppLogger.d('Translation received, audioUrl: ${response.data!.translationAudioUrl}');
+        
         final updatedMessage = ChatMessage(
           id: messageId,
           type: MessageType.voice,
@@ -432,6 +434,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
           userContent: response.data!.transcription,
           translatedContent: response.data!.translation,
           userAudioPath: audioPath,
+          translationAudioPath: response.data!.translationAudioUrl, // TTS audio URL
           sourceLanguage: state.sourceLanguage,
           targetLanguage: state.targetLanguage,
           timestamp: DateTime.now(),
@@ -543,14 +546,14 @@ class ChatNotifier extends StateNotifier<ChatState> {
       AppLogger.d('Playing translation audio for message $messageId');
       
       if (message.translationAudioPath != null) {
-        // Check if file exists
-        final file = File(message.translationAudioPath!);
-        if (!await file.exists()) {
-          AppLogger.e('Translation audio file not found: ${message.translationAudioPath}');
-          // Fall through to TTS
-        } else {
+        final audioPath = message.translationAudioPath!;
+        final isUrl = audioPath.startsWith('http://') || audioPath.startsWith('https://');
+        
+        if (isUrl) {
+          // Play from URL (Cloudinary)
+          AppLogger.d('Playing translation audio from URL: $audioPath');
           state = state.copyWith(currentlyPlayingId: '${messageId}_translation');
-          await _playerService.playFile(message.translationAudioPath!);
+          await _playerService.playUrl(audioPath);
           
           _playerService.onPlayerStateChanged.listen((playerState) {
             if (playerState == PlayerState.completed || playerState == PlayerState.stopped) {
@@ -560,6 +563,25 @@ class ChatNotifier extends StateNotifier<ChatState> {
             }
           });
           return;
+        } else {
+          // Play from local file
+          final file = File(audioPath);
+          if (!await file.exists()) {
+            AppLogger.e('Translation audio file not found: $audioPath');
+            // Fall through to TTS
+          } else {
+            state = state.copyWith(currentlyPlayingId: '${messageId}_translation');
+            await _playerService.playFile(audioPath);
+            
+            _playerService.onPlayerStateChanged.listen((playerState) {
+              if (playerState == PlayerState.completed || playerState == PlayerState.stopped) {
+                if (state.currentlyPlayingId == '${messageId}_translation') {
+                  state = state.copyWith(currentlyPlayingId: null);
+                }
+              }
+            });
+            return;
+          }
         }
       }
       

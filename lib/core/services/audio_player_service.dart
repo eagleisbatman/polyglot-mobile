@@ -35,6 +35,18 @@ class AudioPlayerService {
     }
   }
 
+  /// Play audio from a URL (e.g., Cloudinary)
+  Future<void> playUrl(String url) async {
+    try {
+      AppLogger.d('Playing audio from URL: $url');
+      await _player.play(UrlSource(url));
+      _isPlaying = true;
+    } catch (e) {
+      AppLogger.e('Error playing URL: $e');
+      _isPlaying = false;
+    }
+  }
+
   /// Play audio from bytes (for TTS playback)
   Future<void> playBytes(Uint8List audioData, {String mimeType = 'audio/wav'}) async {
     try {
