@@ -182,8 +182,8 @@ class _TranslationContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasAudio = message.translationAudioPath != null || 
-                     message.translatedContent != null;
+    // Only show play button if there's an actual audio file
+    final hasAudioFile = message.translationAudioPath != null;
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -195,8 +195,8 @@ class _TranslationContent extends StatelessWidget {
             height: 1.4,
           ),
         ),
-        // Show play button for voice messages (only when complete)
-        if (message.type == MessageType.voice && hasAudio && onPlayAudio != null && message.status == MessageStatus.complete)
+        // Show play button only if we have an audio file
+        if (message.type == MessageType.voice && hasAudioFile && onPlayAudio != null && message.status == MessageStatus.complete)
           Padding(
             padding: const EdgeInsets.only(top: 12),
             child: Align(
