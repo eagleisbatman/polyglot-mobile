@@ -10,6 +10,7 @@ class UserMessageBubble extends StatelessWidget {
   final String? documentName;
   final bool hasAudio;
   final bool isPlaying;
+  final bool isProcessing;
   final VoidCallback? onPlayAudio;
 
   const UserMessageBubble({
@@ -20,6 +21,7 @@ class UserMessageBubble extends StatelessWidget {
     this.documentName,
     this.hasAudio = false,
     this.isPlaying = false,
+    this.isProcessing = false,
     this.onPlayAudio,
   });
 
@@ -69,15 +71,17 @@ class UserMessageBubble extends StatelessWidget {
                 color: theme.colorScheme.onSurface,
               ),
             ),
-            // Play audio button for voice messages
-            if (type == MessageType.voice && hasAudio && onPlayAudio != null)
+            // Play audio button - only show when NOT processing
+            if (type == MessageType.voice && hasAudio && onPlayAudio != null && !isProcessing)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: AudioPlayButton(
-                  label: 'Play My Voice',
-                  isPlaying: isPlaying,
-                  onPressed: onPlayAudio!,
-                  color: theme.colorScheme.secondary,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: AudioPlayButton(
+                    isPlaying: isPlaying,
+                    onPressed: onPlayAudio!,
+                    color: theme.colorScheme.secondary,
+                  ),
                 ),
               ),
           ],

@@ -57,6 +57,7 @@ class ChatMessageBubble extends StatelessWidget {
               documentName: message.documentName,
               hasAudio: message.userAudioPath != null,
               isPlaying: isPlayingUserAudio,
+              isProcessing: message.status == MessageStatus.sending,
               onPlayAudio: onPlayUserAudio,
             ),
           

@@ -4,6 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'device_service.dart';
+import '../network/api_client.dart';
 
 /// Authentication state for the app
 enum AuthStatus { 
@@ -78,8 +79,10 @@ class AuthService {
         final user = User.fromJson(data['user']);
         final isNewUser = data['isNewUser'] as bool;
         
-        // Save user ID locally
+        // Save user ID locally and update api client
         await _deviceService.saveUserId(user.id);
+        apiClient.updateUserId(user.id);
+        AppLogger.d('AuthService: User registered, userId updated: ${user.id}');
         
         return AuthState(
           status: AuthStatus.authenticated,

@@ -195,16 +195,17 @@ class _TranslationContent extends StatelessWidget {
             height: 1.4,
           ),
         ),
-        // Show play button for voice messages
-        if (message.type == MessageType.voice && hasAudio && onPlayAudio != null)
+        // Show play button for voice messages (only when complete)
+        if (message.type == MessageType.voice && hasAudio && onPlayAudio != null && message.status == MessageStatus.complete)
           Padding(
             padding: const EdgeInsets.only(top: 12),
-            child: AudioPlayButton(
-              label: 'Play Translation',
-              isPlaying: isPlaying,
-              onPressed: onPlayAudio!,
-              color: theme.colorScheme.primary,
-              playIcon: Icons.volume_up_rounded,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: AudioPlayButton(
+                isPlaying: isPlaying,
+                onPressed: onPlayAudio!,
+                color: theme.colorScheme.primary,
+              ),
             ),
           ),
         if (isStreaming) ...[

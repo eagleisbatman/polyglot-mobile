@@ -19,6 +19,7 @@ class AnalyticsEvents {
   static const String screenLanguageSelector = 'screen_language_selector';
 
   // ==================== Voice Translation Events ====================
+  static const String newSessionStarted = 'new_session_started';
   static const String voiceRecordingStarted = 'voice_recording_started';
   static const String voiceRecordingStopped = 'voice_recording_stopped';
   static const String voiceRecordingCancelled = 'voice_recording_cancelled';

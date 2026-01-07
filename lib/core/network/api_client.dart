@@ -7,8 +7,11 @@ import '../constants/app_constants.dart';
 
 class ApiClient {
   late final Dio _dio;
+  late final AuthInterceptor _authInterceptor;
 
   ApiClient() {
+    _authInterceptor = AuthInterceptor();
+    
     _dio = Dio(
       BaseOptions(
         baseUrl: dotenv.env['API_BASE_URL'] ?? '',
@@ -22,13 +25,18 @@ class ApiClient {
     );
 
     _dio.interceptors.addAll([
-      AuthInterceptor(), // Add user ID to requests (device-based auth)
+      _authInterceptor, // Add user ID to requests (device-based auth)
       ErrorInterceptor(),
       LoggingInterceptor(),
     ]);
   }
 
   Dio get dio => _dio;
+  
+  /// Update the cached user ID in the auth interceptor
+  void updateUserId(String? userId) {
+    _authInterceptor.updateUserId(userId);
+  }
 
   bool get isConfigured => (dotenv.env['API_BASE_URL']?.isNotEmpty ?? false);
 }

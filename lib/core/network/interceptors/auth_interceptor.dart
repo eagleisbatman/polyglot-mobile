@@ -7,52 +7,60 @@ import '../api_endpoints.dart';
 class AuthInterceptor extends Interceptor {
   static const String _userIdKey = 'polyglot_user_id';
   String? _cachedUserId;
-  bool _initialized = false;
-
-  /// Initialize the interceptor by loading the user ID
-  Future<void> _ensureInitialized() async {
-    if (_initialized) return;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      _cachedUserId = prefs.getString(_userIdKey);
-      _initialized = true;
-    } catch (e) {
-      AppLogger.d('AuthInterceptor: Failed to initialize: $e');
-    }
-  }
 
   @override
-  void onRequest(
+  Future<void> onRequest(
     RequestOptions options,
     RequestInterceptorHandler handler,
-  ) {
+  ) async {
     // Skip auth for public endpoints
     if (_isPublicEndpoint(options.path)) {
       handler.next(options);
       return;
     }
 
-    // Use cached user ID (sync) - initialized on app start
+    // Load user ID from SharedPreferences if not cached
+    if (_cachedUserId == null) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        _cachedUserId = prefs.getString(_userIdKey);
+        AppLogger.d('AuthInterceptor: Loaded userId from prefs: $_cachedUserId');
+      } catch (e) {
+        AppLogger.e('AuthInterceptor: Failed to load userId: $e');
+      }
+    }
+
+    // Add user ID header
     if (_cachedUserId != null && _cachedUserId!.isNotEmpty) {
-      options.headers['X-User-ID'] = _cachedUserId;
+      options.headers['X-User-Id'] = _cachedUserId;
+      AppLogger.d('AuthInterceptor: Added X-User-Id header');
+    } else {
+      AppLogger.w('AuthInterceptor: No userId available for request to ${options.path}');
     }
 
     handler.next(options);
   }
   
-  /// Update the cached user ID (call after login/registration)
+  /// Update the cached user ID (call after registration)
   void updateUserId(String? userId) {
     _cachedUserId = userId;
-    _initialized = true;
+    AppLogger.d('AuthInterceptor: Updated cached userId: $userId');
+  }
+  
+  /// Clear cached user ID (for logout)
+  void clearUserId() {
+    _cachedUserId = null;
   }
 
   @override
   void onError(
     DioException err,
     ErrorInterceptorHandler handler,
-  ) async {
-    // For device-based auth, we just pass through errors
-    // No token refresh needed
+  ) {
+    // Log 401 errors for debugging
+    if (err.response?.statusCode == 401) {
+      AppLogger.e('AuthInterceptor: 401 Unauthorized - userId might be missing or invalid');
+    }
     handler.next(err);
   }
 

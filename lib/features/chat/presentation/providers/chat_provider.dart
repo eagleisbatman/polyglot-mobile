@@ -176,12 +176,18 @@ class ChatNotifier extends StateNotifier<ChatState> {
   }
 
   /// Start a new translation session (clear current conversation)
+  /// Start a new chat session - clears current messages
   void startNewSession() {
-    _analytics.trackEvent(AnalyticsEvents.voiceRecordingStarted);
+    _analytics.trackEvent(AnalyticsEvents.newSessionStarted);
     state = state.copyWith(
+      messages: [],
       liveUserText: null,
       liveModelText: null,
       error: null,
+      isRecording: false,
+      isProcessing: false,
+      isConnected: false,
+      currentlyPlayingId: null,
     );
   }
 
