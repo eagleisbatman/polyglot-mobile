@@ -50,25 +50,64 @@ class RealtimeTranslationService {
         );
       }
 
+      AppLogger.d('Connecting to WebSocket: $fullWsUrl');
       _channel = WebSocketChannel.connect(fullWsUrl);
+      
+      // Wait for the connection to be ready with a timeout
+      final completer = Completer<bool>();
+      Timer? timeoutTimer;
+      
+      // Set a 5 second timeout for connection
+      timeoutTimer = Timer(const Duration(seconds: 5), () {
+        if (!completer.isCompleted) {
+          AppLogger.w('WebSocket connection timeout');
+          completer.complete(false);
+        }
+      });
       
       // Listen to responses
       _channel!.stream.listen(
-        _handleMessage,
+        (message) {
+          // First message means connection is established
+          if (!completer.isCompleted) {
+            timeoutTimer?.cancel();
+            _isConnected = true;
+            _eventController?.add(RealtimeEvent.connected());
+            completer.complete(true);
+          }
+          _handleMessage(message);
+        },
         onError: (error) {
+          AppLogger.e('WebSocket error: $error');
           _eventController?.add(RealtimeEvent.error(error.toString()));
           _isConnected = false;
+          if (!completer.isCompleted) {
+            timeoutTimer?.cancel();
+            completer.complete(false);
+          }
         },
         onDone: () {
+          AppLogger.d('WebSocket connection closed');
           _eventController?.add(RealtimeEvent.disconnected());
           _isConnected = false;
+          if (!completer.isCompleted) {
+            timeoutTimer?.cancel();
+            completer.complete(false);
+          }
         },
       );
 
-      _isConnected = true;
-      _eventController?.add(RealtimeEvent.connected());
-      return true;
+      // Wait for connection result
+      final connected = await completer.future;
+      
+      if (!connected) {
+        await _channel?.sink.close();
+        _channel = null;
+      }
+      
+      return connected;
     } catch (e) {
+      AppLogger.e('WebSocket connect error: $e');
       _eventController?.add(RealtimeEvent.error(e.toString()));
       return false;
     }

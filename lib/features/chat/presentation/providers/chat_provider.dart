@@ -184,13 +184,15 @@ class ChatNotifier extends StateNotifier<ChatState> {
     state = state.copyWith(isConnecting: true, error: null);
     _userAudioChunks = []; // Reset audio chunks
 
-    // Try real-time first, fall back to batch if unavailable
+    // Try real-time WebSocket first, but timeout quickly to fall back to batch
+    AppLogger.d('Attempting WebSocket connection for real-time translation...');
     final connected = await _realtimeService.connect(
       sourceLanguage: state.sourceLanguage,
       targetLanguage: state.targetLanguage,
     );
 
     if (connected) {
+      AppLogger.d('WebSocket connected, starting streaming recording');
       _setupRealtimeListeners();
       state = state.copyWith(isConnecting: false, isConnected: true);
 
@@ -209,31 +211,38 @@ class ChatNotifier extends StateNotifier<ChatState> {
         _startRecordingTimer();
         _startAudioStreaming(audioStream);
       } else {
-        state = state.copyWith(
-          isConnecting: false,
-          error: 'Failed to start audio streaming',
-        );
+        // Streaming recording failed, fall back to batch
+        AppLogger.w('Streaming recording failed, falling back to batch mode');
         await _realtimeService.disconnect();
+        await _startBatchRecording();
       }
     } else {
-      // Fall back to batch recording
-      state = state.copyWith(isConnecting: false);
+      // WebSocket not available, use batch recording
+      AppLogger.d('WebSocket unavailable, using batch recording');
+      await _startBatchRecording();
+    }
+  }
+  
+  /// Start batch recording (file-based, for when WebSocket is unavailable)
+  Future<void> _startBatchRecording() async {
+    state = state.copyWith(isConnecting: false, isConnected: false);
+    
+    final started = await _audioService.startRecording();
+    if (started) {
+      _currentMessageId = DateTime.now().millisecondsSinceEpoch.toString();
+      _userTextAccumulator = '';
+      _modelTextAccumulator = '';
+      _translationAudioChunks = [];
       
-      final started = await _audioService.startRecording();
-      if (started) {
-        _currentMessageId = DateTime.now().millisecondsSinceEpoch.toString();
-        _userTextAccumulator = '';
-        _modelTextAccumulator = '';
-        _translationAudioChunks = [];
-        
-        state = state.copyWith(
-          isRecording: true,
-          recordingDuration: Duration.zero,
-        );
-        _startRecordingTimer();
-      } else {
-        state = state.copyWith(error: 'Failed to start recording');
-      }
+      state = state.copyWith(
+        isRecording: true,
+        recordingDuration: Duration.zero,
+      );
+      _startRecordingTimer();
+      AppLogger.d('Batch recording started');
+    } else {
+      state = state.copyWith(error: 'Failed to start recording');
+      AppLogger.e('Failed to start batch recording');
     }
   }
 
@@ -346,22 +355,28 @@ class ChatNotifier extends StateNotifier<ChatState> {
     _recordingTimer?.cancel();
     _analytics.trackEvent(AnalyticsEvents.voiceRecordingStopped);
 
+    AppLogger.d('Stopping recording. isConnected: ${state.isConnected}');
+
     final audioPath = await _audioService.stopRecording();
     
     // Disconnect real-time if connected
     if (state.isConnected) {
+      AppLogger.d('Finalizing real-time session');
       _finalizeTurn(); // Save any pending transcription
       await _realtimeService.disconnect();
       _realtimeSubscription?.cancel();
+      _audioStreamSubscription?.cancel();
       state = state.copyWith(isRecording: false, isConnected: false);
-    } else if (audioPath != null) {
-      // Fall back to batch translation
+    } else if (audioPath != null && audioPath.isNotEmpty) {
+      // Batch translation mode
+      AppLogger.d('Processing batch translation: $audioPath');
       state = state.copyWith(isRecording: false, isProcessing: true);
       await _translateAudioBatch(audioPath);
     } else {
+      AppLogger.e('No audio path available after recording');
       state = state.copyWith(
         isRecording: false,
-        error: 'Failed to stop recording',
+        error: 'No audio recorded. Please try again.',
       );
     }
   }
