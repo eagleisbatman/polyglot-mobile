@@ -1,14 +1,16 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'device_service.dart';
 
 /// Authentication state for the app
 enum AuthStatus { 
-  initial,      // App just started
-  loading,      // Registering device
-  authenticated, // User is authenticated
-  error,        // Authentication failed
+  initial,       // App just started
+  loading,       // Registering device
+  onboarding,    // New user needs onboarding
+  authenticated, // User is authenticated (onboarding complete)
+  error,         // Authentication failed
 }
 
 class AuthState {
@@ -16,12 +18,14 @@ class AuthState {
   final User? user;
   final String? error;
   final bool isNewUser;
+  final bool onboardingComplete;
 
   const AuthState({
     this.status = AuthStatus.initial,
     this.user,
     this.error,
     this.isNewUser = false,
+    this.onboardingComplete = false,
   });
 
   AuthState copyWith({
@@ -29,12 +33,14 @@ class AuthState {
     User? user,
     String? error,
     bool? isNewUser,
+    bool? onboardingComplete,
   }) {
     return AuthState(
       status: status ?? this.status,
       user: user ?? this.user,
       error: error,
       isNewUser: isNewUser ?? this.isNewUser,
+      onboardingComplete: onboardingComplete ?? this.onboardingComplete,
     );
   }
 }
@@ -181,6 +187,7 @@ class AuthService {
 /// Auth notifier for state management
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthService _authService;
+  static const String _onboardingKey = 'polyglot_onboarding_complete';
 
   AuthNotifier(this._authService) : super(const AuthState());
 
@@ -188,8 +195,34 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> initialize() async {
     state = state.copyWith(status: AuthStatus.loading);
     
+    // Check if onboarding was completed before
+    final prefs = await SharedPreferences.getInstance();
+    final onboardingComplete = prefs.getBool(_onboardingKey) ?? false;
+    
     final result = await _authService.registerDevice();
-    state = result;
+    
+    if (result.status == AuthStatus.authenticated) {
+      // Determine if we need to show onboarding
+      final needsOnboarding = result.isNewUser && !onboardingComplete;
+      
+      state = result.copyWith(
+        status: needsOnboarding ? AuthStatus.onboarding : AuthStatus.authenticated,
+        onboardingComplete: onboardingComplete,
+      );
+    } else {
+      state = result;
+    }
+  }
+
+  /// Mark onboarding as complete
+  Future<void> completeOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_onboardingKey, true);
+    
+    state = state.copyWith(
+      status: AuthStatus.authenticated,
+      onboardingComplete: true,
+    );
   }
 
   /// Update user's location
