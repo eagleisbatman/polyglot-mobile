@@ -1,9 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/history_api_service.dart';
-
-// Match the bypass flag from app.dart
-const bool _kBypassAuth = kDebugMode;
 
 final historyApiServiceProvider = Provider<HistoryApiService>((ref) {
   return HistoryApiService();
@@ -61,18 +57,6 @@ class HistoryNotifier extends StateNotifier<HistoryState> {
     bool refresh = false,
   }) async {
     final filterType = type ?? state.filterType;
-    
-    // In debug mode with auth bypass, show empty state
-    if (_kBypassAuth) {
-      state = state.copyWith(
-        isLoading: false,
-        items: [],
-        total: 0,
-        filterType: filterType,
-        error: null,
-      );
-      return;
-    }
 
     state = state.copyWith(
       isLoading: true,
