@@ -10,6 +10,7 @@ import '../../../../core/services/realtime_translation_service.dart';
 import '../../../../core/services/history_storage_service.dart';
 import '../../../../core/services/history_sync_service.dart';
 import '../../../../core/services/voice_api_service.dart';
+import '../../../../core/services/history_api_service.dart';
 import '../../../../core/analytics/analytics_service.dart';
 import '../../../../core/analytics/analytics_events.dart';
 import '../../../../core/analytics/analytics_provider.dart';
@@ -547,6 +548,13 @@ class ChatNotifier extends StateNotifier<ChatState> {
         _updateMessage(messageId, (_) => updatedMessage);
         _historyStorage.saveMessage(updatedMessage);
         
+        // Poll for audio URLs after async upload completes (5 second delay)
+        if (response.data!.userAudioUrl == null || response.data!.translationAudioUrl == null) {
+          Future.delayed(const Duration(seconds: 5), () async {
+            await _fetchUpdatedAudioUrls(messageId, response.data!.conversationId);
+          });
+        }
+        
         _analytics.trackEvent(
           AnalyticsEvents.voiceTranslationCompleted,
           properties: {
@@ -576,6 +584,38 @@ class ChatNotifier extends StateNotifier<ChatState> {
       return m;
     }).toList();
     state = state.copyWith(messages: messages);
+  }
+
+  /// Fetch updated audio URLs from history API (for async uploaded audio)
+  Future<void> _fetchUpdatedAudioUrls(String messageId, String conversationId) async {
+    if (conversationId.isEmpty) return;
+    
+    try {
+      AppLogger.d('Fetching updated audio URLs for message: $messageId');
+      
+      // Use history API to get conversation with audio URLs
+      final historyService = HistoryApiService();
+      final response = await historyService.getConversationMessages(conversationId);
+      
+      if (response.success && response.data != null) {
+        // Find the message in the conversation
+        for (final msg in response.data!.messages) {
+          if (msg.id == messageId || state.messages.any((m) => m.id == messageId)) {
+            // Update the message with new audio URLs
+            _updateMessage(messageId, (existingMsg) {
+              return existingMsg.copyWith(
+                userAudioPath: msg.userAudioUrl ?? existingMsg.userAudioPath,
+                translationAudioPath: msg.translationAudioUrl ?? existingMsg.translationAudioPath,
+              );
+            });
+            AppLogger.d('Updated message with audio URLs: user=${msg.userAudioUrl != null}, tts=${msg.translationAudioUrl != null}');
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      AppLogger.w('Failed to fetch updated audio URLs: $e');
+    }
   }
 
   /// Play user's recorded audio
