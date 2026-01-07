@@ -6,7 +6,7 @@ class AppConstants {
   static const String appVersion = '1.0.0';
 
   // API Configuration
-  static const Duration apiTimeout = Duration(seconds: 30);
+  static const Duration apiTimeout = Duration(seconds: 60); // Increased for voice + TTS
   static const int maxRetries = 3;
   static const Duration retryDelay = Duration(seconds: 2);
 

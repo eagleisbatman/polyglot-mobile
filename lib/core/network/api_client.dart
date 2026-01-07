@@ -17,6 +17,7 @@ class ApiClient {
         baseUrl: dotenv.env['API_BASE_URL'] ?? '',
         connectTimeout: AppConstants.apiTimeout,
         receiveTimeout: AppConstants.apiTimeout,
+        sendTimeout: AppConstants.apiTimeout, // For uploading large audio files
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
