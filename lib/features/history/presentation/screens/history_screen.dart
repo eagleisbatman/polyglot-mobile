@@ -166,52 +166,72 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     final item = historyState.items[index];
                     return Card(
                       key: Key('${TestTags.historyItem}_${item.id}'),
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: _getTypeIcon(item.type),
-                        title: Text(_getTypeLabel(item.type)),
-                        subtitle: Column(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const SizedBox(height: 4),
-                            Text(
-                              '${item.sourceLanguage ?? 'auto'} → ${item.targetLanguage}',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _formatDate(item.createdAt),
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            // Header row: icon, languages, time, menu
+                            Row(
+                              children: [
+                                _getTypeIcon(item.type),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${item.sourceLanguage ?? 'Auto'} → ${item.targetLanguage.toUpperCase()}',
+                                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  _formatDate(item.createdAt),
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: Theme.of(context).colorScheme.outline,
                                   ),
+                                ),
+                                PopupMenuButton(
+                                  padding: EdgeInsets.zero,
+                                  iconSize: 20,
+                                  itemBuilder: (context) => [
+                                    PopupMenuItem(
+                                      child: const Text('Delete'),
+                                      onTap: () {
+                                        Future.delayed(Duration.zero, () {
+                                          _handleDelete(item.id);
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
+                            const SizedBox(height: 8),
+                            // Transcription (original text)
+                            Text(
+                              item.displayTitle,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            // Translation
+                            if (item.displaySubtitle != null) ...[
+                              const SizedBox(height: 6),
+                              Text(
+                                item.displaySubtitle!,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                           ],
                         ),
-                        trailing: PopupMenuButton(
-                          itemBuilder: (context) => [
-                            PopupMenuItem(
-                              child: const Text('View Details'),
-                              onTap: () {
-                                // Navigate to detail view
-                                Future.delayed(Duration.zero, () {
-                                  // TODO: Navigate to detail screen
-                                });
-                              },
-                            ),
-                            PopupMenuItem(
-                              child: const Text('Delete'),
-                              onTap: () {
-                                Future.delayed(Duration.zero, () {
-                                  _handleDelete(item.id);
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                        onTap: () {
-                          // Navigate to detail view
-                          // TODO: Navigate to detail screen
-                        },
                       ),
                     );
                   },
@@ -233,19 +253,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         return const Icon(Icons.description);
       default:
         return const Icon(Icons.translate);
-    }
-  }
-
-  String _getTypeLabel(String type) {
-    switch (type) {
-      case 'voice':
-        return 'Voice Translation';
-      case 'vision':
-        return 'Vision Translation';
-      case 'document':
-        return 'Document Translation';
-      default:
-        return 'Translation';
     }
   }
 

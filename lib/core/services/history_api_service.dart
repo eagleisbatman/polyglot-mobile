@@ -9,7 +9,21 @@ class HistoryItem {
   final String? sourceLanguage;
   final String targetLanguage;
   final DateTime createdAt;
-  final Map<String, dynamic>? metadata;
+  final String? status;
+  
+  // Voice session data
+  final String? transcription;
+  final String? translation;
+  final String? summary;
+  final String? userAudioUrl;
+  final String? translationAudioUrl;
+  
+  // Vision data
+  final String? imageUrl;
+  final String? extractedText;
+  
+  // Document data
+  final String? documentName;
 
   HistoryItem({
     required this.id,
@@ -17,7 +31,15 @@ class HistoryItem {
     this.sourceLanguage,
     required this.targetLanguage,
     required this.createdAt,
-    this.metadata,
+    this.status,
+    this.transcription,
+    this.translation,
+    this.summary,
+    this.userAudioUrl,
+    this.translationAudioUrl,
+    this.imageUrl,
+    this.extractedText,
+    this.documentName,
   });
 
   factory HistoryItem.fromJson(Map<String, dynamic> json) {
@@ -25,10 +47,33 @@ class HistoryItem {
       id: json['id'] as String,
       type: json['type'] as String,
       sourceLanguage: json['sourceLanguage'] as String?,
-      targetLanguage: json['targetLanguage'] as String,
+      targetLanguage: json['targetLanguage'] as String? ?? 'en',
       createdAt: DateTime.parse(json['createdAt'] as String),
-      metadata: json['metadata'] as Map<String, dynamic>?,
+      status: json['status'] as String?,
+      transcription: json['transcription'] as String?,
+      translation: json['translation'] as String?,
+      summary: json['summary'] as String?,
+      userAudioUrl: json['userAudioUrl'] as String?,
+      translationAudioUrl: json['translationAudioUrl'] as String?,
+      imageUrl: json['imageUrl'] as String?,
+      extractedText: json['extractedText'] as String?,
+      documentName: json['documentName'] as String?,
     );
+  }
+  
+  /// Get display title (transcription or summary, truncated)
+  String get displayTitle {
+    final text = transcription ?? summary ?? extractedText ?? documentName;
+    if (text == null || text.isEmpty) return 'Untitled';
+    return text.length > 50 ? '${text.substring(0, 50)}...' : text;
+  }
+  
+  /// Get display subtitle (translation, truncated)
+  String? get displaySubtitle {
+    if (translation == null || translation!.isEmpty) return null;
+    return translation!.length > 80 
+        ? '${translation!.substring(0, 80)}...' 
+        : translation;
   }
 }
 
