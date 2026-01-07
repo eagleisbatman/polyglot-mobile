@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/test_tags.dart';
+import '../../../../core/services/auth_service.dart';
 import '../../../../shared/widgets/error_banner.dart';
 import '../../../../shared/widgets/loading_indicator.dart';
-import '../providers/user_provider.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
 
 class UserProfileScreen extends ConsumerStatefulWidget {
   const UserProfileScreen({super.key});
@@ -15,203 +14,223 @@ class UserProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  bool _isEditing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final user = ref.read(userProfileProvider).user;
-    if (user != null) {
-      _emailController.text = user.email;
-    }
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _handleUpdate() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final success = await ref.read(userProfileProvider.notifier).updateProfile(
-          email: _emailController.text.trim(),
-        );
-
-    if (success && mounted) {
-      setState(() {
-        _isEditing = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile updated successfully')),
-      );
-    }
-  }
-
-  Future<void> _handleLogout() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && mounted) {
-      // TODO: Implement logout with Clerk
-      // await ref.read(authProvider.notifier).logout();
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final profileState = ref.watch(userProfileProvider);
-    // final authState = ref.watch(authProvider); // TODO: Fix auth provider
+    final authState = ref.watch(authProvider);
+    final user = authState.user;
 
     return Scaffold(
       key: const Key(TestTags.userProfileScreen),
       appBar: AppBar(
         title: const Text('Profile'),
-        actions: [
-          if (!_isEditing)
-            IconButton(
-              key: const Key(TestTags.userProfileEditButton),
-              icon: const Icon(Icons.edit),
-              onPressed: () {
-                setState(() {
-                  _isEditing = true;
-                });
-              },
-            ),
-        ],
       ),
       body: SafeArea(
-        child: profileState.isLoading
+        child: authState.status == AuthStatus.loading
             ? const LoadingIndicator(message: 'Loading profile...')
             : SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(height: 24),
-                      CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        child: Text(
-                          profileState.user?.email[0].toUpperCase() ?? 'U',
-                          style: TextStyle(
-                            fontSize: 40,
-                            color: Theme.of(context).colorScheme.onPrimary,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 24),
+                    // Device avatar
+                    CircleAvatar(
+                      radius: 50,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      child: Icon(
+                        _getDeviceIcon(user?.osName),
+                        size: 40,
+                        color: Theme.of(context).colorScheme.onPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Device name
+                    Text(
+                      '${user?.deviceBrand ?? ''} ${user?.deviceModel ?? 'Device'}',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    // OS info
+                    Text(
+                      '${user?.osName ?? 'Unknown'} ${user?.osVersion ?? ''}',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
+                    ),
+                    const SizedBox(height: 32),
+
+                    if (authState.error != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: ErrorBanner(
+                          message: authState.error!,
+                          onRetry: null,
                         ),
                       ),
-                      const SizedBox(height: 24),
-                      if (profileState.error != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: ErrorBanner(
-                            message: profileState.error!,
-                            onRetry: null,
-                          ),
-                        ),
-                      TextFormField(
-                        key: const Key(TestTags.userProfileEmailField),
-                        controller: _emailController,
-                        enabled: _isEditing,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                          labelText: 'Email',
-                          prefixIcon: Icon(Icons.email),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your email';
-                          }
-                          if (!value.contains('@')) {
-                            return 'Please enter a valid email';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      if (profileState.user?.createdAt != null)
-                        ListTile(
-                          leading: const Icon(Icons.calendar_today),
-                          title: const Text('Member since'),
-                          subtitle: Text(
-                            _formatDate(profileState.user!.createdAt!),
-                          ),
-                        ),
-                      const SizedBox(height: 24),
-                      if (_isEditing) ...[
-                        ElevatedButton(
-                          key: const Key(TestTags.userProfileSaveButton),
-                          onPressed: profileState.isLoading
-                              ? null
-                              : _handleUpdate,
-                          child: profileState.isLoading
-                              ? const LoadingIndicator()
-                              : const Text('Save Changes'),
-                        ),
-                        const SizedBox(height: 8),
-                        OutlinedButton(
-                          key: const Key(TestTags.userProfileCancelButton),
-                          onPressed: () {
-                            setState(() {
-                              _isEditing = false;
-                              _emailController.text =
-                                  profileState.user?.email ?? '';
-                            });
-                          },
-                          child: const Text('Cancel'),
-                        ),
+
+                    // Location section
+                    _buildSectionCard(
+                      context,
+                      title: 'Location',
+                      icon: Icons.location_on,
+                      children: [
+                        _buildInfoRow('Country', user?.country ?? 'Not set'),
+                        _buildInfoRow('City', user?.city ?? 'Not set'),
+                        _buildInfoRow('Timezone', user?.timezone ?? 'Unknown'),
                       ],
-                      const SizedBox(height: 32),
-                      const Divider(),
-                      const SizedBox(height: 16),
-                      ListTile(
-                        leading: const Icon(Icons.settings),
-                        title: const Text('Preferences'),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () {
+                      action: TextButton(
+                        onPressed: () {
+                          // TODO: Navigate to location settings
                           context.push('/preferences');
                         },
+                        child: const Text('Update Location'),
                       ),
-                      const Divider(),
-                      ListTile(
-                        key: const Key(TestTags.userProfileLogoutButton),
-                        leading: const Icon(Icons.logout),
-                        title: const Text('Logout'),
-                        onTap: _handleLogout,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Language preferences section
+                    _buildSectionCard(
+                      context,
+                      title: 'Language Preferences',
+                      icon: Icons.translate,
+                      children: [
+                        _buildInfoRow('Source', user?.preferredSourceLanguage ?? 'en'),
+                        _buildInfoRow('Target', user?.preferredTargetLanguage ?? 'hi'),
+                      ],
+                      action: TextButton(
+                        onPressed: () {
+                          context.push('/preferences');
+                        },
+                        child: const Text('Change'),
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // App info section
+                    _buildSectionCard(
+                      context,
+                      title: 'App Info',
+                      icon: Icons.info_outline,
+                      children: [
+                        _buildInfoRow('Version', user?.appVersion ?? '1.0.0'),
+                        _buildInfoRow(
+                          'Member since',
+                          user?.createdAt != null
+                              ? _formatDate(user!.createdAt)
+                              : 'Unknown',
+                        ),
+                        _buildInfoRow(
+                          'Last active',
+                          user?.lastActiveAt != null
+                              ? _formatDate(user!.lastActiveAt!)
+                              : 'Unknown',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Settings button
+                    ListTile(
+                      leading: const Icon(Icons.settings),
+                      title: const Text('Preferences'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        context.push('/preferences');
+                      },
+                    ),
+                    const Divider(),
+                    ListTile(
+                      leading: const Icon(Icons.history),
+                      title: const Text('Translation History'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        context.push('/history');
+                      },
+                    ),
+                    const Divider(),
+
+                    // Device ID (for debugging)
+                    ExpansionTile(
+                      leading: const Icon(Icons.developer_mode),
+                      title: const Text('Developer Info'),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: SelectableText(
+                            'User ID:\n${user?.id ?? 'Unknown'}',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  fontFamily: 'monospace',
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
       ),
     );
   }
 
+  Widget _buildSectionCard(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+    Widget? action,
+  }) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const Spacer(),
+                if (action != null) action,
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getDeviceIcon(String? osName) {
+    if (osName == null) return Icons.devices;
+    if (osName.toLowerCase().contains('ios')) return Icons.phone_iphone;
+    if (osName.toLowerCase().contains('android')) return Icons.phone_android;
+    return Icons.devices;
+  }
+
   String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 }
-

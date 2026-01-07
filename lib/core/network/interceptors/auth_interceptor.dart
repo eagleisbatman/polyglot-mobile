@@ -1,12 +1,10 @@
 import 'package:dio/dio.dart';
-import 'package:clerk_flutter/clerk_flutter.dart';
-import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../api_endpoints.dart';
 
+/// Interceptor that adds user ID to requests for device-based auth
 class AuthInterceptor extends Interceptor {
-  final BuildContext? _context;
-
-  AuthInterceptor(this._context);
+  static const String _userIdKey = 'polyglot_user_id';
 
   @override
   void onRequest(
@@ -19,21 +17,18 @@ class AuthInterceptor extends Interceptor {
       return;
     }
 
-    // Get token from Clerk - TODO: Fix Clerk API integration
-    // Temporarily disabled to allow app to compile
-    // if (_context != null) {
-    //   try {
-    //     final auth = ClerkAuth.of(_context!);
-    //     if (auth.isSignedIn) {
-    //       final session = auth.session;
-    //       if (session != null) {
-    //         // TODO: Implement proper token retrieval
-    //       }
-    //     }
-    //   } catch (e) {
-    //     // Token fetch failed, continue without auth header
-    //   }
-    // }
+    // Add user ID header for device-based auth
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString(_userIdKey);
+      
+      if (userId != null && userId.isNotEmpty) {
+        options.headers['X-User-ID'] = userId;
+      }
+    } catch (e) {
+      // Failed to get user ID, continue without it
+      print('AuthInterceptor: Failed to get user ID: $e');
+    }
 
     handler.next(options);
   }
@@ -43,8 +38,8 @@ class AuthInterceptor extends Interceptor {
     DioException err,
     ErrorInterceptorHandler handler,
   ) async {
-    // Clerk handles token refresh automatically
-    // Just pass through errors
+    // For device-based auth, we just pass through errors
+    // No token refresh needed
     handler.next(err);
   }
 
@@ -52,7 +47,8 @@ class AuthInterceptor extends Interceptor {
     final publicPaths = [
       ApiEndpoints.health,
       ApiEndpoints.languages,
+      '/api/v1/device/register', // Device registration is public
     ];
-    return publicPaths.contains(path);
+    return publicPaths.any((p) => path.contains(p));
   }
 }

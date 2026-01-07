@@ -1,236 +1,254 @@
 import 'package:dio/dio.dart';
-import '../network/api_client.dart';
-import '../network/api_endpoints.dart';
-import '../network/models/api_response.dart';
-import '../services/storage_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'device_service.dart';
 
-class AuthResponse {
-  final String accessToken;
-  final String refreshToken;
-  final User user;
+/// Authentication state for the app
+enum AuthStatus { 
+  initial,      // App just started
+  loading,      // Registering device
+  authenticated, // User is authenticated
+  error,        // Authentication failed
+}
 
-  AuthResponse({
-    required this.accessToken,
-    required this.refreshToken,
-    required this.user,
+class AuthState {
+  final AuthStatus status;
+  final User? user;
+  final String? error;
+  final bool isNewUser;
+
+  const AuthState({
+    this.status = AuthStatus.initial,
+    this.user,
+    this.error,
+    this.isNewUser = false,
   });
 
-  factory AuthResponse.fromJson(Map<String, dynamic> json) {
-    final data = json['data'] as Map<String, dynamic>;
-    return AuthResponse(
-      accessToken: data['accessToken'] as String,
-      refreshToken: data['refreshToken'] as String,
-      user: User.fromJson(data['user'] as Map<String, dynamic>),
+  AuthState copyWith({
+    AuthStatus? status,
+    User? user,
+    String? error,
+    bool? isNewUser,
+  }) {
+    return AuthState(
+      status: status ?? this.status,
+      user: user ?? this.user,
+      error: error,
+      isNewUser: isNewUser ?? this.isNewUser,
     );
   }
 }
 
-class User {
-  final String id;
-  final String email;
-  final DateTime? createdAt;
-  final DateTime? updatedAt;
-
-  User({
-    required this.id,
-    required this.email,
-    this.createdAt,
-    this.updatedAt,
-  });
-
-  factory User.fromJson(Map<String, dynamic> json) {
-    return User(
-      id: json['id'] as String,
-      email: json['email'] as String,
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'] as String)
-          : null,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'] as String)
-          : null,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'email': email,
-      if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
-      if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
-    };
-  }
-}
-
+/// Service for device-based authentication
 class AuthService {
-  final Dio _dio = apiClient.dio;
-  static const String _accessTokenKey = 'access_token';
-  static const String _refreshTokenKey = 'refresh_token';
-  static const String _userKey = 'user';
+  final DeviceService _deviceService;
+  final Dio _dio;
 
-  Future<ApiResponse<AuthResponse>> register({
-    required String email,
-    required String password,
-  }) async {
-    try {
-      final response = await _dio.post(
-        ApiEndpoints.authRegister,
-        data: {
-          'email': email,
-          'password': password,
-        },
-      );
-
-      final authResponse = AuthResponse.fromJson(
-        response.data as Map<String, dynamic>,
-      );
-
-      // Store tokens and user
-      await _storeTokens(authResponse.accessToken, authResponse.refreshToken);
-      await _storeUser(authResponse.user);
-
-      return ApiResponse.fromJson(
-        response.data as Map<String, dynamic>,
-        (json) => AuthResponse.fromJson(json as Map<String, dynamic>),
-      );
-    } on DioException catch (e) {
-      return ApiResponse(
-        success: false,
-        error: e.response?.data['error'] as String? ??
-            'Registration failed. Please try again.',
-      );
-    }
+  AuthService(this._deviceService, {Dio? dio}) 
+      : _dio = dio ?? Dio() {
+    _dio.options.baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://localhost:3000';
+    _dio.options.connectTimeout = const Duration(seconds: 30);
+    _dio.options.receiveTimeout = const Duration(seconds: 30);
   }
 
-  Future<ApiResponse<AuthResponse>> login({
-    required String email,
-    required String password,
-  }) async {
+  /// Register device and get/create user
+  Future<AuthState> registerDevice() async {
     try {
+      // Collect device information
+      final deviceInfo = await _deviceService.collectDeviceInfo();
+      
+      // Register with backend
       final response = await _dio.post(
-        ApiEndpoints.authLogin,
-        data: {
-          'email': email,
-          'password': password,
-        },
+        '/api/v1/device/register',
+        data: deviceInfo.toJson(),
       );
 
-      final authResponse = AuthResponse.fromJson(
-        response.data as Map<String, dynamic>,
-      );
-
-      // Store tokens and user
-      await _storeTokens(authResponse.accessToken, authResponse.refreshToken);
-      await _storeUser(authResponse.user);
-
-      return ApiResponse.fromJson(
-        response.data as Map<String, dynamic>,
-        (json) => AuthResponse.fromJson(json as Map<String, dynamic>),
-      );
-    } on DioException catch (e) {
-      return ApiResponse(
-        success: false,
-        error: e.response?.data['error'] as String? ??
-            'Login failed. Please check your credentials.',
-      );
-    }
-  }
-
-  Future<ApiResponse<AuthResponse>> refreshToken() async {
-    final refreshToken = await getRefreshToken();
-    if (refreshToken == null) {
-      return ApiResponse(
-        success: false,
-        error: 'No refresh token available',
-      );
-    }
-
-    try {
-      final response = await _dio.post(
-        ApiEndpoints.authRefresh,
-        data: {
-          'refreshToken': refreshToken,
-        },
-      );
-
-      final authResponse = AuthResponse.fromJson(
-        response.data['data'] as Map<String, dynamic>,
-      );
-
-      // Update stored tokens
-      await _storeTokens(authResponse.accessToken, authResponse.refreshToken);
-
-      return ApiResponse.fromJson(
-        response.data as Map<String, dynamic>,
-        (json) => AuthResponse.fromJson(json as Map<String, dynamic>),
-      );
-    } on DioException catch (e) {
-      // If refresh fails, clear tokens
-      await logout();
-      return ApiResponse(
-        success: false,
-        error: 'Session expired. Please login again.',
-      );
-    }
-  }
-
-  Future<void> logout() async {
-    try {
-      final accessToken = await getAccessToken();
-      if (accessToken != null) {
-        await _dio.post(
-          ApiEndpoints.authLogout,
-          options: Options(
-            headers: {'Authorization': 'Bearer $accessToken'},
-          ),
+      if (response.data['success'] == true) {
+        final data = response.data['data'];
+        final user = User.fromJson(data['user']);
+        final isNewUser = data['isNewUser'] as bool;
+        
+        // Save user ID locally
+        await _deviceService.saveUserId(user.id);
+        
+        return AuthState(
+          status: AuthStatus.authenticated,
+          user: user,
+          isNewUser: isNewUser,
         );
       }
+      
+      return const AuthState(
+        status: AuthStatus.error,
+        error: 'Registration failed',
+      );
+    } on DioException catch (e) {
+      print('Auth error: ${e.message}');
+      return AuthState(
+        status: AuthStatus.error,
+        error: e.message ?? 'Network error',
+      );
     } catch (e) {
-      // Ignore errors during logout
-    } finally {
-      // Always clear local storage
-      await StorageService.remove(_accessTokenKey);
-      await StorageService.remove(_refreshTokenKey);
-      await StorageService.remove(_userKey);
+      print('Auth error: $e');
+      return AuthState(
+        status: AuthStatus.error,
+        error: e.toString(),
+      );
     }
   }
 
-  Future<String?> getAccessToken() async {
-    return await StorageService.getString(_accessTokenKey);
-  }
-
-  Future<String?> getRefreshToken() async {
-    return await StorageService.getString(_refreshTokenKey);
-  }
-
-  Future<User?> getCurrentUser() async {
+  /// Update user's location
+  Future<User?> updateLocation({
+    required String userId,
+    String? country,
+    String? countryCode,
+    String? city,
+    String? region,
+    String? latitude,
+    String? longitude,
+    String? timezone,
+  }) async {
     try {
-      final userData = await StorageService.getObject(_userKey);
-      if (userData == null) return null;
-      
-      final json = Map<String, dynamic>.from(userData as Map);
-      return User.fromJson(json);
+      final response = await _dio.put(
+        '/api/v1/device/user/$userId/location',
+        data: {
+          if (country != null) 'country': country,
+          if (countryCode != null) 'countryCode': countryCode,
+          if (city != null) 'city': city,
+          if (region != null) 'region': region,
+          if (latitude != null) 'latitude': latitude,
+          if (longitude != null) 'longitude': longitude,
+          if (timezone != null) 'timezone': timezone,
+        },
+      );
+
+      if (response.data['success'] == true) {
+        return User.fromJson(response.data['data']);
+      }
+      return null;
     } catch (e) {
+      print('Update location error: $e');
       return null;
     }
   }
 
-  Future<bool> isAuthenticated() async {
-    final token = await getAccessToken();
-    return token != null && token.isNotEmpty;
+  /// Update user's language preferences
+  Future<User?> updatePreferences({
+    required String userId,
+    String? sourceLanguage,
+    String? targetLanguage,
+  }) async {
+    try {
+      final response = await _dio.put(
+        '/api/v1/device/user/$userId/preferences',
+        data: {
+          if (sourceLanguage != null) 'preferredSourceLanguage': sourceLanguage,
+          if (targetLanguage != null) 'preferredTargetLanguage': targetLanguage,
+        },
+      );
+
+      if (response.data['success'] == true) {
+        return User.fromJson(response.data['data']);
+      }
+      return null;
+    } catch (e) {
+      print('Update preferences error: $e');
+      return null;
+    }
   }
 
-  Future<void> _storeTokens(String accessToken, String refreshToken) async {
-    await StorageService.setString(_accessTokenKey, accessToken);
-    await StorageService.setString(_refreshTokenKey, refreshToken);
+  /// Get user by ID
+  Future<User?> getUser(String userId) async {
+    try {
+      final response = await _dio.get('/api/v1/device/user/$userId');
+
+      if (response.data['success'] == true) {
+        return User.fromJson(response.data['data']);
+      }
+      return null;
+    } catch (e) {
+      print('Get user error: $e');
+      return null;
+    }
   }
 
-  Future<void> _storeUser(User user) async {
-    await StorageService.setObject(_userKey, user.toJson());
-  }
-
-  // Expose _storeUser for UserApiService
-  Future<void> storeUser(User user) async {
-    await _storeUser(user);
+  /// Get the current user ID
+  Future<String?> getCurrentUserId() async {
+    return _deviceService.getCachedUserId();
   }
 }
 
+/// Auth notifier for state management
+class AuthNotifier extends StateNotifier<AuthState> {
+  final AuthService _authService;
+
+  AuthNotifier(this._authService) : super(const AuthState());
+
+  /// Initialize authentication on app start
+  Future<void> initialize() async {
+    state = state.copyWith(status: AuthStatus.loading);
+    
+    final result = await _authService.registerDevice();
+    state = result;
+  }
+
+  /// Update user's location
+  Future<void> updateLocation({
+    String? country,
+    String? countryCode,
+    String? city,
+    String? region,
+    String? latitude,
+    String? longitude,
+    String? timezone,
+  }) async {
+    if (state.user == null) return;
+    
+    final updatedUser = await _authService.updateLocation(
+      userId: state.user!.id,
+      country: country,
+      countryCode: countryCode,
+      city: city,
+      region: region,
+      latitude: latitude,
+      longitude: longitude,
+      timezone: timezone,
+    );
+    
+    if (updatedUser != null) {
+      state = state.copyWith(user: updatedUser);
+    }
+  }
+
+  /// Update language preferences
+  Future<void> updatePreferences({
+    String? sourceLanguage,
+    String? targetLanguage,
+  }) async {
+    if (state.user == null) return;
+    
+    final updatedUser = await _authService.updatePreferences(
+      userId: state.user!.id,
+      sourceLanguage: sourceLanguage,
+      targetLanguage: targetLanguage,
+    );
+    
+    if (updatedUser != null) {
+      state = state.copyWith(user: updatedUser);
+    }
+  }
+
+  /// Get the current user ID
+  String? get userId => state.user?.id;
+}
+
+// Providers
+final authServiceProvider = Provider<AuthService>((ref) {
+  final deviceService = ref.watch(deviceServiceProvider);
+  return AuthService(deviceService);
+});
+
+final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+  final authService = ref.watch(authServiceProvider);
+  return AuthNotifier(authService);
+});

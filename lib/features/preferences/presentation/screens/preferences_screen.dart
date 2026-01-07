@@ -6,6 +6,8 @@ import '../../../../shared/widgets/error_banner.dart';
 import '../../../../shared/widgets/loading_indicator.dart';
 import '../providers/preferences_provider.dart';
 import '../../../../core/services/preferences_api_service.dart';
+import '../../../../core/services/auth_service.dart';
+import '../../../../core/services/location_service.dart';
 
 class PreferencesScreen extends ConsumerStatefulWidget {
   const PreferencesScreen({super.key});
@@ -169,25 +171,7 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    _buildSection(
-                      title: 'Location',
-                      children: [
-                        SwitchListTile(
-                          key: const Key(TestTags.preferencesLocationSwitch),
-                          title: const Text('Enable Location Tracking'),
-                          subtitle: const Text(
-                            'Automatically detect language based on location',
-                          ),
-                          value: _enableLocationTracking ?? true,
-                          onChanged: (value) {
-                            setState(() {
-                              _enableLocationTracking = value;
-                              _hasChanges = true;
-                            });
-                          },
-                        ),
-                      ],
-                    ),
+                    _buildLocationSection(context),
                   ],
                 ),
               ),
@@ -268,6 +252,100 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
           _hasChanges = true;
         });
       },
+    );
+  }
+
+  Widget _buildLocationSection(BuildContext context) {
+    final authState = ref.watch(authProvider);
+    final user = authState.user;
+    final locationService = ref.watch(locationServiceProvider);
+
+    return _buildSection(
+      title: 'Location',
+      children: [
+        // Current location info
+        if (user?.country != null || user?.city != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Row(
+              children: [
+                const Icon(Icons.location_on, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    [user?.city, user?.region, user?.country]
+                        .where((s) => s != null && s.isNotEmpty)
+                        .join(', '),
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        // Enable location switch
+        SwitchListTile(
+          key: const Key(TestTags.preferencesLocationSwitch),
+          title: const Text('Enable Location Tracking'),
+          subtitle: const Text(
+            'Automatically detect language based on location',
+          ),
+          value: _enableLocationTracking ?? true,
+          onChanged: (value) async {
+            if (value) {
+              // Request permission when enabling
+              final hasPermission = await locationService.requestPermission();
+              if (!hasPermission && mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('Location permission required'),
+                    action: SnackBarAction(
+                      label: 'Settings',
+                      onPressed: () => locationService.openSettings(),
+                    ),
+                  ),
+                );
+                return;
+              }
+            }
+            setState(() {
+              _enableLocationTracking = value;
+              _hasChanges = true;
+            });
+          },
+        ),
+        const SizedBox(height: 8),
+        // Update location button
+        FilledButton.tonalIcon(
+          onPressed: () async {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Getting your location...')),
+            );
+            
+            final success = await locationService.updateLocationOnServer();
+            
+            if (mounted) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    success
+                        ? 'Location updated successfully'
+                        : 'Failed to update location. Please grant permission.',
+                  ),
+                  action: !success
+                      ? SnackBarAction(
+                          label: 'Settings',
+                          onPressed: () => locationService.openSettings(),
+                        )
+                      : null,
+                ),
+              );
+            }
+          },
+          icon: const Icon(Icons.my_location),
+          label: const Text('Update My Location'),
+        ),
+      ],
     );
   }
 }

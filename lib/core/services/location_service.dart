@@ -1,94 +1,153 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
-import '../constants/supported_languages.dart';
+import 'auth_service.dart';
 
+/// Location data with geocoded address
+class LocationData {
+  final double latitude;
+  final double longitude;
+  final String? country;
+  final String? countryCode;
+  final String? city;
+  final String? region;
+  final String? timezone;
+
+  const LocationData({
+    required this.latitude,
+    required this.longitude,
+    this.country,
+    this.countryCode,
+    this.city,
+    this.region,
+    this.timezone,
+  });
+}
+
+/// Service for collecting and managing location data
 class LocationService {
-  Future<String?> getCurrentLanguageCode() async {
+  final AuthNotifier _authNotifier;
+
+  LocationService(this._authNotifier);
+
+  /// Check if location permission is granted
+  Future<bool> hasPermission() async {
+    final permission = await Geolocator.checkPermission();
+    return permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse;
+  }
+
+  /// Request location permission
+  Future<bool> requestPermission() async {
+    final permission = await Geolocator.checkPermission();
+
+    if (permission == LocationPermission.denied) {
+      final result = await Geolocator.requestPermission();
+      return result == LocationPermission.always ||
+          result == LocationPermission.whileInUse;
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      // Permission permanently denied, user needs to enable in settings
+      return false;
+    }
+
+    return permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse;
+  }
+
+  /// Get current location and geocode it
+  Future<LocationData?> getCurrentLocation() async {
     try {
-      final position = await _getCurrentPosition();
-      if (position != null) {
+      // Check if location services are enabled
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        print('Location services are disabled');
+        return null;
+      }
+
+      // Check permission
+      final hasPermission = await this.hasPermission();
+      if (!hasPermission) {
+        print('Location permission not granted');
+        return null;
+      }
+
+      // Get current position
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.low, // Low accuracy is faster
+        timeLimit: const Duration(seconds: 10),
+      );
+
+      // Geocode to get address
+      String? country;
+      String? countryCode;
+      String? city;
+      String? region;
+
+      try {
         final placemarks = await placemarkFromCoordinates(
           position.latitude,
           position.longitude,
         );
+
         if (placemarks.isNotEmpty) {
-          final countryCode = placemarks.first.isoCountryCode?.toLowerCase();
-          return _countryCodeToLanguageCode(countryCode);
+          final place = placemarks.first;
+          country = place.country;
+          countryCode = place.isoCountryCode;
+          city = place.locality ?? place.subAdministrativeArea;
+          region = place.administrativeArea;
         }
-      }
-      return null;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  Future<Position?> _getCurrentPosition() async {
-    try {
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        return null;
+      } catch (e) {
+        print('Geocoding failed: $e');
+        // Continue without geocoded address
       }
 
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          return null;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        return null;
-      }
-
-      return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.low,
+      return LocationData(
+        latitude: position.latitude,
+        longitude: position.longitude,
+        country: country,
+        countryCode: countryCode,
+        city: city,
+        region: region,
+        timezone: DateTime.now().timeZoneName,
       );
     } catch (e) {
+      print('Failed to get location: $e');
       return null;
     }
   }
 
-  String? _countryCodeToLanguageCode(String? countryCode) {
-    if (countryCode == null) return null;
+  /// Update location on the server
+  Future<bool> updateLocationOnServer() async {
+    final location = await getCurrentLocation();
+    if (location == null) return false;
 
-    // Map common country codes to language codes
-    final countryToLanguage = {
-      'us': 'en',
-      'gb': 'en',
-      'in': 'hi',
-      'es': 'es',
-      'mx': 'es',
-      'fr': 'fr',
-      'de': 'de',
-      'cn': 'zh',
-      'tw': 'zh',
-      'jp': 'ja',
-      'kr': 'ko',
-      'br': 'pt',
-      'pt': 'pt',
-      'it': 'it',
-      'ru': 'ru',
-      'sa': 'ar',
-      'ae': 'ar',
-      'vn': 'vi',
-      'th': 'th',
-    };
+    await _authNotifier.updateLocation(
+      country: location.country,
+      countryCode: location.countryCode,
+      city: location.city,
+      region: location.region,
+      latitude: location.latitude.toString(),
+      longitude: location.longitude.toString(),
+      timezone: location.timezone,
+    );
 
-    return countryToLanguage[countryCode.toLowerCase()];
+    return true;
   }
 
-  Future<bool> requestPermission() async {
-    try {
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      return permission == LocationPermission.whileInUse ||
-          permission == LocationPermission.always;
-    } catch (e) {
-      return false;
-    }
+  /// Open app settings for location permission
+  Future<bool> openSettings() async {
+    return await Geolocator.openAppSettings();
+  }
+
+  /// Open location settings
+  Future<bool> openLocationSettings() async {
+    return await Geolocator.openLocationSettings();
   }
 }
 
+final locationServiceProvider = Provider<LocationService>((ref) {
+  final authNotifier = ref.watch(authProvider.notifier);
+  return LocationService(authNotifier);
+});

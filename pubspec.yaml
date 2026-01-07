@@ -27,8 +27,9 @@ dependencies:
   # Configuration
   flutter_dotenv: ^5.1.0
 
-  # Authentication
-  clerk_flutter: ^0.0.13-beta
+  # Device Info
+  device_info_plus: ^10.1.0
+  uuid: ^4.3.3
 
   # Audio
   record: ^5.2.1
