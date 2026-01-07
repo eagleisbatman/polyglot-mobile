@@ -185,6 +185,8 @@ class _TranslationContent extends StatelessWidget {
     // Only show play button if there's an actual audio file
     final hasAudioFile = message.translationAudioPath != null;
     
+    debugPrint('TranslationBubble: type=${message.type}, hasAudioFile=$hasAudioFile, onPlayAudio=${onPlayAudio != null}, status=${message.status}');
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
