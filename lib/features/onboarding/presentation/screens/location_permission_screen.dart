@@ -132,11 +132,10 @@ class _LocationPermissionScreenState
   }
 
   void _completeOnboarding() {
-    // Mark onboarding as complete and navigate to main app
+    // Mark onboarding as complete
+    // The auth state change will trigger app.dart to show the main app
     ref.read(authProvider.notifier).completeOnboarding();
-    
-    // Pop all screens and go to home
-    Navigator.of(context).popUntil((route) => route.isFirst);
+    // No navigation needed - app.dart builder will handle the transition
   }
 
   @override
@@ -171,7 +170,7 @@ class _LocationPermissionScreenState
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: theme.colorScheme.primary
-                                .withOpacity(0.2 - (index * 0.05)),
+                                .withValues(alpha: 0.2 - (index * 0.05)),
                             width: 2,
                           ),
                         ),
