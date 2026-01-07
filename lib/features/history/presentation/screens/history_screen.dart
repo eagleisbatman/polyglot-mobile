@@ -307,217 +307,46 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   void _showTranslationDetails(HistoryItem item, ThemeData theme) {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        builder: (context, scrollController) => Container(
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            children: [
-              // Handle bar
-              Container(
-                margin: const EdgeInsets.only(top: 12),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.outlineVariant,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              
-              // Header
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(_getTypeIconData(item.type), size: 16,
-                            color: theme.colorScheme.onPrimaryContainer),
-                          const SizedBox(width: 6),
-                          Text(
-                            '${item.sourceLanguage?.toUpperCase() ?? 'AUTO'} → ${item.targetLanguage.toUpperCase()}',
-                            style: theme.textTheme.labelMedium?.copyWith(
-                              color: theme.colorScheme.onPrimaryContainer,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      _formatDate(item.createdAt),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.outline,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              
-              const Divider(height: 1),
-              
-              // Content
-              Expanded(
-                child: ListView(
-                  controller: scrollController,
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    // Original text section
-                    _buildSection(
-                      theme: theme,
-                      title: 'Original',
-                      content: item.transcription ?? item.displayTitle,
-                      icon: Icons.record_voice_over,
-                    ),
-                    
-                    const SizedBox(height: 20),
-                    
-                    // Translation section
-                    _buildSection(
-                      theme: theme,
-                      title: 'Translation',
-                      content: item.translation ?? item.displaySubtitle ?? '',
-                      icon: Icons.translate,
-                    ),
-                    
-                    if (item.summary != null && item.summary!.isNotEmpty) ...[
-                      const SizedBox(height: 20),
-                      _buildSection(
-                        theme: theme,
-                        title: 'Summary',
-                        content: item.summary!,
-                        icon: Icons.short_text,
-                      ),
-                    ],
-                    
-                    // Audio playback buttons (if available)
-                    if (item.userAudioUrl != null || item.translationAudioUrl != null) ...[
-                      const SizedBox(height: 24),
-                      Row(
-                        children: [
-                          if (item.userAudioUrl != null)
-                            Expanded(
-                              child: _buildPlayButton(
-                                theme: theme,
-                                label: 'Play Original',
-                                icon: Icons.play_circle_outline,
-                                onTap: () {
-                                  // TODO: Play user audio
-                                },
-                              ),
-                            ),
-                          if (item.userAudioUrl != null && item.translationAudioUrl != null)
-                            const SizedBox(width: 12),
-                          if (item.translationAudioUrl != null)
-                            Expanded(
-                              child: _buildPlayButton(
-                                theme: theme,
-                                label: 'Play Translation',
-                                icon: Icons.volume_up,
-                                onTap: () {
-                                  // TODO: Play translation audio
-                                },
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                    
-                    const SizedBox(height: 32),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+      backgroundColor: theme.colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-    );
-  }
-
-  Widget _buildSection({
-    required ThemeData theme,
-    required String title,
-    required String content,
-    required IconData icon,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, size: 16, color: theme.colorScheme.primary),
-            const SizedBox(width: 6),
+            // Original
             Text(
-              title,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w600,
+              'Original',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.outline,
               ),
             ),
+            const SizedBox(height: 4),
+            Text(
+              item.transcription ?? item.displayTitle,
+              style: theme.textTheme.bodyLarge,
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Translation
+            Text(
+              'Translation',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.outline,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              item.translation ?? '',
+              style: theme.textTheme.bodyLarge,
+            ),
+            
+            const SizedBox(height: 20),
           ],
-        ),
-        const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: SelectableText(
-            content,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              height: 1.5,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPlayButton({
-    required ThemeData theme,
-    required String label,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: theme.colorScheme.secondaryContainer,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 20, color: theme.colorScheme.onSecondaryContainer),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.onSecondaryContainer,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
