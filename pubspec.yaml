@@ -70,6 +70,26 @@ dev_dependencies:
   integration_test:
     sdk: flutter
   flutter_lints: ^3.0.1
+  flutter_launcher_icons: ^0.14.3
+  flutter_native_splash: ^2.4.6
+
+# App Icon Configuration
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/app_icon.png"
+  adaptive_icon_background: "#6366F1"
+  adaptive_icon_foreground: "assets/icons/app_icon.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true
+
+# Splash Screen Configuration
+flutter_native_splash:
+  color: "#6366F1"
+  image: "assets/icons/app_icon.png"
+  android_12:
+    color: "#6366F1"
+    image: "assets/icons/app_icon.png"
 
 # Override to fix compatibility issues with Flutter 3.32+
 dependency_overrides:
@@ -82,3 +102,4 @@ flutter:
   # Assets
   assets:
     - .env
+    - assets/icons/

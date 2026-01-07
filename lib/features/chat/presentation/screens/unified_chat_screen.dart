@@ -11,6 +11,7 @@ import '../widgets/camera_options_sheet.dart';
 import '../widgets/language_selector_sheet.dart';
 import '../widgets/chat_empty_state.dart';
 import '../../domain/entities/chat_message.dart';
+import '../../../../shared/widgets/app_drawer.dart';
 
 /// Unified chat screen combining voice, vision, and document translation
 /// in a single conversational interface
@@ -117,6 +118,7 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       appBar: _buildAppBar(state, notifier, theme),
+      drawer: const AppDrawer(),
       body: Column(
         children: [
           _buildMessagesList(state, theme),
@@ -141,12 +143,7 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
         onSwap: notifier.swapLanguages,
       ),
       centerTitle: true,
-      leading: IconButton(
-        icon: const Icon(Icons.menu),
-        onPressed: () {
-          // TODO: Open drawer or settings
-        },
-      ),
+      // Drawer opens automatically with leading menu icon
       actions: [
         // New translation button
         if (state.messages.isNotEmpty)
@@ -155,13 +152,11 @@ class _UnifiedChatScreenState extends ConsumerState<UnifiedChatScreen> {
             tooltip: 'New translation',
             onPressed: notifier.startNewSession,
           ),
+        // History
         IconButton(
           icon: const Icon(Icons.history),
+          tooltip: 'Translation history',
           onPressed: () => context.push('/history'),
-        ),
-        IconButton(
-          icon: const Icon(Icons.person_outline),
-          onPressed: () => context.push('/profile'),
         ),
       ],
     );
