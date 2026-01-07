@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:polyglot_mobile/core/utils/app_logger.dart';
 import '../network/api_client.dart';
 import '../network/api_endpoints.dart';
 import '../network/models/api_response.dart';
@@ -24,6 +25,8 @@ class VoiceApiService {
     }
 
     try {
+      AppLogger.d('VoiceApiService.translateVoice called with conversationId: $conversationId');
+      
       final response = await _dio.post(
         ApiEndpoints.voiceTranslate,
         data: {
@@ -37,8 +40,12 @@ class VoiceApiService {
         },
       );
 
+      final responseData = response.data as Map<String, dynamic>;
+      final dataMap = responseData['data'] as Map<String, dynamic>?;
+      AppLogger.d('API Response received - conversationId: ${dataMap?['conversationId']}');
+      
       return ApiResponse.fromJson(
-        response.data as Map<String, dynamic>,
+        responseData,
         (json) => VoiceTranslationResponse.fromJson(json as Map<String, dynamic>),
       );
     } on DioException catch (e) {
