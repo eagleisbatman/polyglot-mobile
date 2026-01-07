@@ -1,0 +1,60 @@
+{
+  "@@locale": "th",
+  "appName": "Polyglot",
+  "voice": {
+    "title": "การแปลเสียง",
+    "speakIn": "พูดด้วย{language}",
+    "translateTo": "แปลเป็น{language}",
+    "tapToSpeak": "แตะเพื่อพูด",
+    "recording": "กำลังบันทึก...",
+    "processing": "กำลังประมวลผล...",
+    "history": "ประวัติ",
+    "sessionSummary": "สรุปเซสชัน",
+    "followUpQuestions": "คำถามติดตาม",
+    "languageMismatch": "ตรวจพบความไม่ตรงกันของภาษา",
+    "adjustLanguage": "ปรับภาษา"
+  },
+  "vision": {
+    "title": "การแปลภาพ",
+    "captureImage": "จับภาพ",
+    "pickFromGallery": "เลือกจากแกลเลอรี",
+    "translateImage": "แปลภาพ",
+    "targetLanguage": "ภาษาปลายทาง",
+    "processing": "กำลังประมวลผลภาพ...",
+    "history": "ประวัติ"
+  },
+  "docs": {
+    "title": "การแปลเอกสาร",
+    "uploadDocument": "อัปโหลดเอกสาร",
+    "selectMode": "เลือกโหมด",
+    "translate": "แปล",
+    "summarize": "สรุป",
+    "process": "ประมวลผลเอกสาร",
+    "processing": "กำลังประมวลผลเอกสาร...",
+    "export": "ส่งออกผลลัพธ์",
+    "history": "ประวัติ",
+    "workspace": "พื้นที่ทำงาน"
+  },
+  "common": {
+    "loading": "กำลังโหลด...",
+    "error": "ข้อผิดพลาด",
+    "retry": "ลองอีกครั้ง",
+    "cancel": "ยกเลิก",
+    "ok": "ตกลง",
+    "close": "ปิด",
+    "back": "กลับ",
+    "save": "บันทึก",
+    "delete": "ลบ",
+    "offline": "คุณออฟไลน์",
+    "noInternet": "ไม่มีการเชื่อมต่ออินเทอร์เน็ต",
+    "tryAgain": "ลองอีกครั้ง",
+    "selectLanguage": "เลือกภาษา",
+    "searchLanguages": "ค้นหาภาษา..."
+  },
+  "nav": {
+    "voice": "เสียง",
+    "vision": "ภาพ",
+    "documents": "เอกสาร"
+  }
+}
+

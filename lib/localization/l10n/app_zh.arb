@@ -1,0 +1,60 @@
+{
+  "@@locale": "zh",
+  "appName": "Polyglot",
+  "voice": {
+    "title": "语音翻译",
+    "speakIn": "用{language}说话",
+    "translateTo": "翻译成{language}",
+    "tapToSpeak": "点击说话",
+    "recording": "录音中...",
+    "processing": "处理中...",
+    "history": "历史记录",
+    "sessionSummary": "会话摘要",
+    "followUpQuestions": "后续问题",
+    "languageMismatch": "检测到语言不匹配",
+    "adjustLanguage": "调整语言"
+  },
+  "vision": {
+    "title": "视觉翻译",
+    "captureImage": "拍摄图片",
+    "pickFromGallery": "从相册选择",
+    "translateImage": "翻译图片",
+    "targetLanguage": "目标语言",
+    "processing": "处理图片中...",
+    "history": "历史记录"
+  },
+  "docs": {
+    "title": "文档翻译",
+    "uploadDocument": "上传文档",
+    "selectMode": "选择模式",
+    "translate": "翻译",
+    "summarize": "摘要",
+    "process": "处理文档",
+    "processing": "处理文档中...",
+    "export": "导出结果",
+    "history": "历史记录",
+    "workspace": "工作区"
+  },
+  "common": {
+    "loading": "加载中...",
+    "error": "错误",
+    "retry": "重试",
+    "cancel": "取消",
+    "ok": "确定",
+    "close": "关闭",
+    "back": "返回",
+    "save": "保存",
+    "delete": "删除",
+    "offline": "您处于离线状态",
+    "noInternet": "无网络连接",
+    "tryAgain": "重试",
+    "selectLanguage": "选择语言",
+    "searchLanguages": "搜索语言..."
+  },
+  "nav": {
+    "voice": "语音",
+    "vision": "视觉",
+    "documents": "文档"
+  }
+}
+

@@ -1,0 +1,82 @@
+{
+  "@@locale": "en",
+  "appName": "Polyglot",
+  "@appName": {
+    "description": "Application name"
+  },
+  "voiceTitle": "Voice Translation",
+  "voiceSpeakIn": "Speak in {language}",
+  "@voiceSpeakIn": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "voiceTranslateTo": "Translate to {language}",
+  "@voiceTranslateTo": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "voiceTapToSpeak": "Tap to speak",
+  "voiceRecording": "Recording...",
+  "voiceProcessing": "Processing...",
+  "voiceHistory": "History",
+  "voiceSessionSummary": "Session Summary",
+  "voiceFollowUpQuestions": "Follow-up Questions",
+  "voiceLanguageMismatch": "Language mismatch detected",
+  "voiceAdjustLanguage": "Adjust Language",
+  "visionTitle": "Vision Translation",
+  "visionCaptureImage": "Capture Image",
+  "visionPickFromGallery": "Pick from Gallery",
+  "visionTranslateImage": "Translate Image",
+  "visionTargetLanguage": "Target Language",
+  "visionProcessing": "Processing image...",
+  "visionHistory": "History",
+  "docsTitle": "Document Translation",
+  "docsUploadDocument": "Upload Document",
+  "docsSelectMode": "Select Mode",
+  "docsTranslate": "Translate",
+  "docsSummarize": "Summarize",
+  "docsProcess": "Process Document",
+  "docsProcessing": "Processing document...",
+  "docsExport": "Export Result",
+  "docsHistory": "History",
+  "docsWorkspace": "Workspace",
+  "commonLoading": "Loading...",
+  "commonError": "Error",
+  "commonRetry": "Retry",
+  "commonCancel": "Cancel",
+  "commonOk": "OK",
+  "commonClose": "Close",
+  "commonBack": "Back",
+  "commonSave": "Save",
+  "commonDelete": "Delete",
+  "commonOffline": "You are offline",
+  "commonNoInternet": "No internet connection",
+  "commonTryAgain": "Try again",
+  "commonSelectLanguage": "Select Language",
+  "commonSearchLanguages": "Search languages...",
+  "navVoice": "Voice",
+  "navVision": "Vision",
+  "navDocuments": "Documents",
+  
+  "chatStartTranslating": "Start translating",
+  "chatEmptyDescription": "Tap the mic to speak, take a photo,\nor attach a document",
+  "chatVoiceHint": "Speak and get instant translation",
+  "chatVisionHint": "Translate text in images",
+  "chatDocumentsHint": "Translate PDFs and documents",
+  "chatTranslating": "Translating...",
+  "chatProcessing": "Processing...",
+  "chatTranslationFailed": "Translation failed",
+  "chatPlayAudio": "Play audio",
+  "chatTakePhoto": "Take Photo",
+  "chatTakePhotoSubtitle": "Use camera to capture text",
+  "chatChooseFromGallery": "Choose from Gallery",
+  "chatChooseFromGallerySubtitle": "Select an existing image",
+  "chatLanguageFrom": "From",
+  "chatLanguageTo": "To"
+}

@@ -1,0 +1,60 @@
+{
+  "@@locale": "ar",
+  "appName": "Polyglot",
+  "voice": {
+    "title": "الترجمة الصوتية",
+    "speakIn": "تحدث بـ {language}",
+    "translateTo": "ترجم إلى {language}",
+    "tapToSpeak": "اضغط للتحدث",
+    "recording": "جاري التسجيل...",
+    "processing": "جاري المعالجة...",
+    "history": "السجل",
+    "sessionSummary": "ملخص الجلسة",
+    "followUpQuestions": "أسئلة المتابعة",
+    "languageMismatch": "تم اكتشاف عدم تطابق اللغة",
+    "adjustLanguage": "ضبط اللغة"
+  },
+  "vision": {
+    "title": "الترجمة البصرية",
+    "captureImage": "التقاط صورة",
+    "pickFromGallery": "اختر من المعرض",
+    "translateImage": "ترجم الصورة",
+    "targetLanguage": "اللغة المستهدفة",
+    "processing": "جاري معالجة الصورة...",
+    "history": "السجل"
+  },
+  "docs": {
+    "title": "ترجمة المستندات",
+    "uploadDocument": "رفع مستند",
+    "selectMode": "اختر الوضع",
+    "translate": "ترجم",
+    "summarize": "لخص",
+    "process": "معالجة المستند",
+    "processing": "جاري معالجة المستند...",
+    "export": "تصدير النتيجة",
+    "history": "السجل",
+    "workspace": "مساحة العمل"
+  },
+  "common": {
+    "loading": "جاري التحميل...",
+    "error": "خطأ",
+    "retry": "إعادة المحاولة",
+    "cancel": "إلغاء",
+    "ok": "موافق",
+    "close": "إغلاق",
+    "back": "رجوع",
+    "save": "حفظ",
+    "delete": "حذف",
+    "offline": "أنت غير متصل",
+    "noInternet": "لا يوجد اتصال بالإنترنت",
+    "tryAgain": "حاول مرة أخرى",
+    "selectLanguage": "اختر اللغة",
+    "searchLanguages": "البحث عن اللغات..."
+  },
+  "nav": {
+    "voice": "صوت",
+    "vision": "بصري",
+    "documents": "مستندات"
+  }
+}
+

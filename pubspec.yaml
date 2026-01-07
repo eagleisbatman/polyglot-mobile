@@ -1,0 +1,79 @@
+name: polyglot_mobile
+description: Polyglot Mobile - Real-time translation app (Voice, Vision, Documents)
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.8.0 <4.0.0'
+  flutter: '>=3.32.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State Management
+  flutter_riverpod: ^2.5.1
+
+  # Navigation
+  go_router: ^14.0.0
+
+  # Networking
+  dio: ^5.4.0
+  connectivity_plus: ^5.0.2
+
+  # Configuration
+  flutter_dotenv: ^5.1.0
+
+  # Authentication
+  clerk_flutter: ^0.0.13-beta
+
+  # Audio
+  record: ^5.2.1
+  audioplayers: ^6.0.0
+
+  # Camera & Image
+  camera: ^0.11.0+1
+  image_picker: ^1.0.7
+  image: ^4.1.7
+
+  # Permissions & Location
+  permission_handler: ^11.1.0
+  geolocator: ^12.0.0
+  geocoding: ^3.0.0
+
+  # Storage
+  shared_preferences: ^2.2.2
+  path_provider: ^2.1.2
+
+  # File Handling
+  file_picker: ^8.0.0
+  pdf: ^3.11.0
+
+  # i18n
+  intl: ^0.20.2
+
+  # UI
+  flutter_svg: ^2.0.9
+  shimmer: ^3.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+
+# Override to fix compatibility issues with Flutter 3.32+
+dependency_overrides:
+  record_linux: ^1.0.0
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  # Assets
+  assets:
+    - .env
+

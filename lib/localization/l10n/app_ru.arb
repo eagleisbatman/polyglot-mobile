@@ -1,0 +1,60 @@
+{
+  "@@locale": "ru",
+  "appName": "Polyglot",
+  "voice": {
+    "title": "Голосовой Перевод",
+    "speakIn": "Говорите на {language}",
+    "translateTo": "Перевести на {language}",
+    "tapToSpeak": "Нажмите, чтобы говорить",
+    "recording": "Запись...",
+    "processing": "Обработка...",
+    "history": "История",
+    "sessionSummary": "Сводка Сессии",
+    "followUpQuestions": "Дополнительные Вопросы",
+    "languageMismatch": "Обнаружено несоответствие языка",
+    "adjustLanguage": "Настроить Язык"
+  },
+  "vision": {
+    "title": "Визуальный Перевод",
+    "captureImage": "Захватить Изображение",
+    "pickFromGallery": "Выбрать из Галереи",
+    "translateImage": "Перевести Изображение",
+    "targetLanguage": "Целевой Язык",
+    "processing": "Обработка изображения...",
+    "history": "История"
+  },
+  "docs": {
+    "title": "Перевод Документов",
+    "uploadDocument": "Загрузить Документ",
+    "selectMode": "Выбрать Режим",
+    "translate": "Перевести",
+    "summarize": "Резюмировать",
+    "process": "Обработать Документ",
+    "processing": "Обработка документа...",
+    "export": "Экспортировать Результат",
+    "history": "История",
+    "workspace": "Рабочее Пространство"
+  },
+  "common": {
+    "loading": "Загрузка...",
+    "error": "Ошибка",
+    "retry": "Повторить",
+    "cancel": "Отмена",
+    "ok": "ОК",
+    "close": "Закрыть",
+    "back": "Назад",
+    "save": "Сохранить",
+    "delete": "Удалить",
+    "offline": "Вы в автономном режиме",
+    "noInternet": "Нет подключения к интернету",
+    "tryAgain": "Попробовать Снова",
+    "selectLanguage": "Выбрать Язык",
+    "searchLanguages": "Поиск языков..."
+  },
+  "nav": {
+    "voice": "Голос",
+    "vision": "Визуальный",
+    "documents": "Документы"
+  }
+}
+

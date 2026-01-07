@@ -1,0 +1,60 @@
+{
+  "@@locale": "fr",
+  "appName": "Polyglot",
+  "voice": {
+    "title": "Traduction Vocale",
+    "speakIn": "Parlez en {language}",
+    "translateTo": "Traduire en {language}",
+    "tapToSpeak": "Appuyez pour parler",
+    "recording": "Enregistrement...",
+    "processing": "Traitement...",
+    "history": "Historique",
+    "sessionSummary": "Résumé de Session",
+    "followUpQuestions": "Questions de Suivi",
+    "languageMismatch": "Incompatibilité de langue détectée",
+    "adjustLanguage": "Ajuster la Langue"
+  },
+  "vision": {
+    "title": "Traduction Visuelle",
+    "captureImage": "Capturer l'Image",
+    "pickFromGallery": "Choisir dans la Galerie",
+    "translateImage": "Traduire l'Image",
+    "targetLanguage": "Langue Cible",
+    "processing": "Traitement de l'image...",
+    "history": "Historique"
+  },
+  "docs": {
+    "title": "Traduction de Documents",
+    "uploadDocument": "Télécharger un Document",
+    "selectMode": "Sélectionner le Mode",
+    "translate": "Traduire",
+    "summarize": "Résumer",
+    "process": "Traiter le Document",
+    "processing": "Traitement du document...",
+    "export": "Exporter le Résultat",
+    "history": "Historique",
+    "workspace": "Espace de Travail"
+  },
+  "common": {
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "retry": "Réessayer",
+    "cancel": "Annuler",
+    "ok": "OK",
+    "close": "Fermer",
+    "back": "Retour",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "offline": "Vous êtes hors ligne",
+    "noInternet": "Pas de connexion Internet",
+    "tryAgain": "Réessayer",
+    "selectLanguage": "Sélectionner la Langue",
+    "searchLanguages": "Rechercher des langues..."
+  },
+  "nav": {
+    "voice": "Voix",
+    "vision": "Vision",
+    "documents": "Documents"
+  }
+}
+

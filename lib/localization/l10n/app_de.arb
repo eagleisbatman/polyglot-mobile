@@ -1,0 +1,60 @@
+{
+  "@@locale": "de",
+  "appName": "Polyglot",
+  "voice": {
+    "title": "Sprachübersetzung",
+    "speakIn": "Sprechen Sie auf {language}",
+    "translateTo": "Übersetzen Sie ins {language}",
+    "tapToSpeak": "Tippen zum Sprechen",
+    "recording": "Aufnahme...",
+    "processing": "Verarbeitung...",
+    "history": "Verlauf",
+    "sessionSummary": "Sitzungszusammenfassung",
+    "followUpQuestions": "Nachfragen",
+    "languageMismatch": "Sprachinkompatibilität erkannt",
+    "adjustLanguage": "Sprache Anpassen"
+  },
+  "vision": {
+    "title": "Bildübersetzung",
+    "captureImage": "Bild Aufnehmen",
+    "pickFromGallery": "Aus Galerie Auswählen",
+    "translateImage": "Bild Übersetzen",
+    "targetLanguage": "Zielsprache",
+    "processing": "Bild wird verarbeitet...",
+    "history": "Verlauf"
+  },
+  "docs": {
+    "title": "Dokumentübersetzung",
+    "uploadDocument": "Dokument Hochladen",
+    "selectMode": "Modus Auswählen",
+    "translate": "Übersetzen",
+    "summarize": "Zusammenfassen",
+    "process": "Dokument Verarbeiten",
+    "processing": "Dokument wird verarbeitet...",
+    "export": "Ergebnis Exportieren",
+    "history": "Verlauf",
+    "workspace": "Arbeitsbereich"
+  },
+  "common": {
+    "loading": "Lädt...",
+    "error": "Fehler",
+    "retry": "Wiederholen",
+    "cancel": "Abbrechen",
+    "ok": "OK",
+    "close": "Schließen",
+    "back": "Zurück",
+    "save": "Speichern",
+    "delete": "Löschen",
+    "offline": "Sie sind offline",
+    "noInternet": "Keine Internetverbindung",
+    "tryAgain": "Erneut Versuchen",
+    "selectLanguage": "Sprache Auswählen",
+    "searchLanguages": "Sprachen Suchen..."
+  },
+  "nav": {
+    "voice": "Stimme",
+    "vision": "Vision",
+    "documents": "Dokumente"
+  }
+}
+

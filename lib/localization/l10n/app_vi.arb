@@ -1,0 +1,60 @@
+{
+  "@@locale": "vi",
+  "appName": "Polyglot",
+  "voice": {
+    "title": "Dịch Giọng Nói",
+    "speakIn": "Nói bằng {language}",
+    "translateTo": "Dịch sang {language}",
+    "tapToSpeak": "Chạm để nói",
+    "recording": "Đang ghi âm...",
+    "processing": "Đang xử lý...",
+    "history": "Lịch sử",
+    "sessionSummary": "Tóm tắt Phiên",
+    "followUpQuestions": "Câu hỏi Theo dõi",
+    "languageMismatch": "Phát hiện không khớp ngôn ngữ",
+    "adjustLanguage": "Điều chỉnh Ngôn ngữ"
+  },
+  "vision": {
+    "title": "Dịch Hình Ảnh",
+    "captureImage": "Chụp Hình",
+    "pickFromGallery": "Chọn từ Thư viện",
+    "translateImage": "Dịch Hình Ảnh",
+    "targetLanguage": "Ngôn ngữ Đích",
+    "processing": "Đang xử lý hình ảnh...",
+    "history": "Lịch sử"
+  },
+  "docs": {
+    "title": "Dịch Tài liệu",
+    "uploadDocument": "Tải lên Tài liệu",
+    "selectMode": "Chọn Chế độ",
+    "translate": "Dịch",
+    "summarize": "Tóm tắt",
+    "process": "Xử lý Tài liệu",
+    "processing": "Đang xử lý tài liệu...",
+    "export": "Xuất Kết quả",
+    "history": "Lịch sử",
+    "workspace": "Không gian Làm việc"
+  },
+  "common": {
+    "loading": "Đang tải...",
+    "error": "Lỗi",
+    "retry": "Thử lại",
+    "cancel": "Hủy",
+    "ok": "OK",
+    "close": "Đóng",
+    "back": "Quay lại",
+    "save": "Lưu",
+    "delete": "Xóa",
+    "offline": "Bạn đang offline",
+    "noInternet": "Không có kết nối Internet",
+    "tryAgain": "Thử lại",
+    "selectLanguage": "Chọn Ngôn ngữ",
+    "searchLanguages": "Tìm kiếm ngôn ngữ..."
+  },
+  "nav": {
+    "voice": "Giọng nói",
+    "vision": "Hình ảnh",
+    "documents": "Tài liệu"
+  }
+}
+

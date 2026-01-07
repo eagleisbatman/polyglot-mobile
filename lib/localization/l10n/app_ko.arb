@@ -1,0 +1,60 @@
+{
+  "@@locale": "ko",
+  "appName": "Polyglot",
+  "voice": {
+    "title": "음성 번역",
+    "speakIn": "{language}로 말하기",
+    "translateTo": "{language}로 번역",
+    "tapToSpeak": "탭하여 말하기",
+    "recording": "녹음 중...",
+    "processing": "처리 중...",
+    "history": "기록",
+    "sessionSummary": "세션 요약",
+    "followUpQuestions": "후속 질문",
+    "languageMismatch": "언어 불일치 감지됨",
+    "adjustLanguage": "언어 조정"
+  },
+  "vision": {
+    "title": "이미지 번역",
+    "captureImage": "이미지 캡처",
+    "pickFromGallery": "갤러리에서 선택",
+    "translateImage": "이미지 번역",
+    "targetLanguage": "대상 언어",
+    "processing": "이미지 처리 중...",
+    "history": "기록"
+  },
+  "docs": {
+    "title": "문서 번역",
+    "uploadDocument": "문서 업로드",
+    "selectMode": "모드 선택",
+    "translate": "번역",
+    "summarize": "요약",
+    "process": "문서 처리",
+    "processing": "문서 처리 중...",
+    "export": "결과 내보내기",
+    "history": "기록",
+    "workspace": "작업 공간"
+  },
+  "common": {
+    "loading": "로딩 중...",
+    "error": "오류",
+    "retry": "다시 시도",
+    "cancel": "취소",
+    "ok": "확인",
+    "close": "닫기",
+    "back": "뒤로",
+    "save": "저장",
+    "delete": "삭제",
+    "offline": "오프라인 상태입니다",
+    "noInternet": "인터넷 연결이 없습니다",
+    "tryAgain": "다시 시도",
+    "selectLanguage": "언어 선택",
+    "searchLanguages": "언어 검색..."
+  },
+  "nav": {
+    "voice": "음성",
+    "vision": "이미지",
+    "documents": "문서"
+  }
+}
+

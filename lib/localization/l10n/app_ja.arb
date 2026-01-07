@@ -1,0 +1,60 @@
+{
+  "@@locale": "ja",
+  "appName": "Polyglot",
+  "voice": {
+    "title": "音声翻訳",
+    "speakIn": "{language}で話す",
+    "translateTo": "{language}に翻訳",
+    "tapToSpeak": "タップして話す",
+    "recording": "録音中...",
+    "processing": "処理中...",
+    "history": "履歴",
+    "sessionSummary": "セッション要約",
+    "followUpQuestions": "フォローアップ質問",
+    "languageMismatch": "言語の不一致が検出されました",
+    "adjustLanguage": "言語を調整"
+  },
+  "vision": {
+    "title": "画像翻訳",
+    "captureImage": "画像をキャプチャ",
+    "pickFromGallery": "ギャラリーから選択",
+    "translateImage": "画像を翻訳",
+    "targetLanguage": "ターゲット言語",
+    "processing": "画像を処理中...",
+    "history": "履歴"
+  },
+  "docs": {
+    "title": "文書翻訳",
+    "uploadDocument": "文書をアップロード",
+    "selectMode": "モードを選択",
+    "translate": "翻訳",
+    "summarize": "要約",
+    "process": "文書を処理",
+    "processing": "文書を処理中...",
+    "export": "結果をエクスポート",
+    "history": "履歴",
+    "workspace": "ワークスペース"
+  },
+  "common": {
+    "loading": "読み込み中...",
+    "error": "エラー",
+    "retry": "再試行",
+    "cancel": "キャンセル",
+    "ok": "OK",
+    "close": "閉じる",
+    "back": "戻る",
+    "save": "保存",
+    "delete": "削除",
+    "offline": "オフラインです",
+    "noInternet": "インターネット接続がありません",
+    "tryAgain": "再試行",
+    "selectLanguage": "言語を選択",
+    "searchLanguages": "言語を検索..."
+  },
+  "nav": {
+    "voice": "音声",
+    "vision": "画像",
+    "documents": "文書"
+  }
+}
+
