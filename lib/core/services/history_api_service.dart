@@ -91,15 +91,25 @@ class HistoryListResponse {
   });
 
   factory HistoryListResponse.fromJson(Map<String, dynamic> json) {
-    final data = json['data'] as Map<String, dynamic>;
+    // json is already the inner data object from ApiResponse
+    final pagination = json['pagination'] as Map<String, dynamic>?;
+    
     return HistoryListResponse(
-      items: (data['items'] as List<dynamic>)
+      items: (json['items'] as List<dynamic>? ?? [])
           .map((item) => HistoryItem.fromJson(item as Map<String, dynamic>))
           .toList(),
-      total: data['total'] as int,
-      limit: data['limit'] as int,
-      offset: data['offset'] as int,
+      total: _parseIntSafe(pagination?['total']),
+      limit: _parseIntSafe(pagination?['limit']) ?? 50,
+      offset: _parseIntSafe(pagination?['page']) ?? 0,
     );
+  }
+  
+  /// Safely parse int from either int or string
+  static int _parseIntSafe(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
   }
 }
 
