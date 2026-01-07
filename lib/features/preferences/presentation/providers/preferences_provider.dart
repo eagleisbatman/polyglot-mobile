@@ -1,7 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/preferences_api_service.dart';
-import '../../../../core/network/models/api_response.dart';
-import '../../../../core/services/auth_service.dart';
 
 final preferencesApiServiceProvider =
     Provider<PreferencesApiService>((ref) {

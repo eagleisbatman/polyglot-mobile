@@ -4,7 +4,6 @@ import '../../../../core/services/audio_service.dart';
 import '../../../../core/analytics/analytics_service.dart';
 import '../../../../core/analytics/analytics_events.dart';
 import '../../../../core/analytics/analytics_provider.dart';
-import '../../../../shared/models/voice_translation_response.dart';
 import '../../domain/entities/voice_interaction.dart';
 
 final voiceApiServiceProvider = Provider<VoiceApiService>((ref) {

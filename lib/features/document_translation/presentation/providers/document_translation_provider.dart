@@ -3,7 +3,6 @@ import '../../../../core/services/document_api_service.dart';
 import '../../../../core/analytics/analytics_service.dart';
 import '../../../../core/analytics/analytics_events.dart';
 import '../../../../core/analytics/analytics_provider.dart';
-import '../../../../shared/models/document_translation_response.dart';
 import '../../domain/entities/document_interaction.dart';
 
 final documentApiServiceProvider = Provider<DocumentApiService>((ref) {

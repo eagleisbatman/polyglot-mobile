@@ -1,8 +1,7 @@
+import 'package:polyglot_mobile/core/utils/app_logger.dart';
 import 'dart:async';
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../../../../core/services/audio_service.dart';
 import '../../../../core/services/audio_player_service.dart';
@@ -123,7 +122,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
         return;
       }
     } catch (e) {
-      print('Failed to fetch from backend: $e');
+      AppLogger.d('Failed to fetch from backend: $e');
     }
     
     // Fall back to local storage
@@ -325,11 +324,11 @@ class ChatNotifier extends StateNotifier<ChatState> {
         _realtimeService.sendAudioChunk(chunk);
       },
       onError: (error) {
-        print('Audio streaming error: $error');
+        AppLogger.d('Audio streaming error: $error');
         state = state.copyWith(error: 'Audio streaming error');
       },
       onDone: () {
-        print('Audio streaming completed');
+        AppLogger.d('Audio streaming completed');
       },
     );
   }
@@ -590,7 +589,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       // Refresh history to get updated URLs
       await refreshHistory();
     } catch (e) {
-      print('Error uploading audio files: $e');
+      AppLogger.d('Error uploading audio files: $e');
     }
   }
 

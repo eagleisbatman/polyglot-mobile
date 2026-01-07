@@ -3,7 +3,6 @@ import '../../../../core/services/vision_api_service.dart';
 import '../../../../core/analytics/analytics_service.dart';
 import '../../../../core/analytics/analytics_events.dart';
 import '../../../../core/analytics/analytics_provider.dart';
-import '../../../../shared/models/vision_translation_response.dart';
 import '../../domain/entities/vision_interaction.dart';
 
 final visionApiServiceProvider = Provider<VisionApiService>((ref) {

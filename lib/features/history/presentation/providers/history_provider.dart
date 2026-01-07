@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/history_api_service.dart';
-import '../../../../core/network/models/api_response.dart';
 
 // Match the bypass flag from app.dart
 const bool _kBypassAuth = kDebugMode;

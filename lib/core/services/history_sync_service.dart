@@ -1,4 +1,4 @@
-import 'dart:convert';
+import 'package:polyglot_mobile/core/utils/app_logger.dart';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -43,7 +43,7 @@ class HistorySyncService {
       
       return [];
     } catch (e) {
-      print('Error fetching history: $e');
+      AppLogger.d('Error fetching history: $e');
       // Fall back to local storage
       return _localStorage.getHistory();
     }
@@ -60,7 +60,7 @@ class HistorySyncService {
       
       return null;
     } catch (e) {
-      print('Error fetching interaction: $e');
+      AppLogger.d('Error fetching interaction: $e');
       return _localStorage.getMessage(id);
     }
   }
@@ -78,7 +78,7 @@ class HistorySyncService {
       
       return false;
     } catch (e) {
-      print('Error deleting interaction: $e');
+      AppLogger.d('Error deleting interaction: $e');
       return false;
     }
   }
@@ -92,7 +92,7 @@ class HistorySyncService {
     try {
       final file = File(filePath);
       if (!await file.exists()) {
-        print('Audio file not found: $filePath');
+        AppLogger.d('Audio file not found: $filePath');
         return null;
       }
 
@@ -116,7 +116,7 @@ class HistorySyncService {
       
       return null;
     } catch (e) {
-      print('Error uploading audio: $e');
+      AppLogger.d('Error uploading audio: $e');
       return null;
     }
   }
@@ -145,7 +145,7 @@ class HistorySyncService {
       
       return null;
     } catch (e) {
-      print('Error uploading audio: $e');
+      AppLogger.d('Error uploading audio: $e');
       return null;
     }
   }
@@ -182,7 +182,7 @@ class HistorySyncService {
         }
       }
     } catch (e) {
-      print('Error syncing to backend: $e');
+      AppLogger.d('Error syncing to backend: $e');
     }
   }
 

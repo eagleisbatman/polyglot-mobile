@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'dart:async';
 import 'analytics_events.dart';
 
 /// Analytics service for tracking user events and enabling A/B testing

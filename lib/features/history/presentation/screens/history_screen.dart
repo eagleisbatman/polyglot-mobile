@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../../core/constants/test_tags.dart';
 import '../../../../shared/widgets/error_banner.dart';
-import '../../../../shared/widgets/loading_indicator.dart';
 import '../providers/history_provider.dart';
-import '../../../../core/services/history_api_service.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});

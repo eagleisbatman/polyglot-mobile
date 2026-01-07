@@ -1,3 +1,4 @@
+import 'package:polyglot_mobile/core/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -92,13 +93,13 @@ class AuthService {
         error: 'Registration failed',
       );
     } on DioException catch (e) {
-      print('Auth error: ${e.message}');
+      AppLogger.d('Auth error: ${e.message}');
       return AuthState(
         status: AuthStatus.error,
         error: e.message ?? 'Network error',
       );
     } catch (e) {
-      print('Auth error: $e');
+      AppLogger.d('Auth error: $e');
       return AuthState(
         status: AuthStatus.error,
         error: e.toString(),
@@ -136,7 +137,7 @@ class AuthService {
       }
       return null;
     } catch (e) {
-      print('Update location error: $e');
+      AppLogger.d('Update location error: $e');
       return null;
     }
   }
@@ -161,7 +162,7 @@ class AuthService {
       }
       return null;
     } catch (e) {
-      print('Update preferences error: $e');
+      AppLogger.d('Update preferences error: $e');
       return null;
     }
   }
@@ -176,7 +177,7 @@ class AuthService {
       }
       return null;
     } catch (e) {
-      print('Get user error: $e');
+      AppLogger.d('Get user error: $e');
       return null;
     }
   }

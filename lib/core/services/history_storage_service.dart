@@ -1,3 +1,4 @@
+import 'package:polyglot_mobile/core/utils/app_logger.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/chat/domain/entities/chat_message.dart';
@@ -45,7 +46,7 @@ class HistoryStorageService {
           .map((json) => ChatMessage.fromJson(json as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      print('Error loading history: $e');
+      AppLogger.d('Error loading history: $e');
       return [];
     }
   }

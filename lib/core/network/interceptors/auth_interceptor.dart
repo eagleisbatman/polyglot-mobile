@@ -1,3 +1,4 @@
+import 'package:polyglot_mobile/core/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../api_endpoints.dart';
@@ -27,7 +28,7 @@ class AuthInterceptor extends Interceptor {
       }
     } catch (e) {
       // Failed to get user ID, continue without it
-      print('AuthInterceptor: Failed to get user ID: $e');
+      AppLogger.d('AuthInterceptor: Failed to get user ID: $e');
     }
 
     handler.next(options);

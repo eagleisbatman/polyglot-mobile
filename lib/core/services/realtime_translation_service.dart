@@ -1,3 +1,4 @@
+import 'package:polyglot_mobile/core/utils/app_logger.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -132,7 +133,7 @@ class RealtimeTranslationService {
           break;
       }
     } catch (e) {
-      print('Error parsing message: $e');
+      AppLogger.d('Error parsing message: $e');
     }
   }
 

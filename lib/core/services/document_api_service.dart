@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:http_parser/http_parser.dart';
 import '../network/api_client.dart';
 import '../network/api_endpoints.dart';
 import '../network/models/api_response.dart';

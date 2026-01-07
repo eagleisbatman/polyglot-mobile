@@ -1,3 +1,4 @@
+import 'package:polyglot_mobile/core/utils/app_logger.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
@@ -35,7 +36,7 @@ class AudioService {
       
       // Start streaming recording
       final audioStream = await _recorder.startStream(
-        RecordConfig(
+        const RecordConfig(
           encoder: AudioEncoder.pcm16bits,
           sampleRate: 16000, // Gemini requires 16kHz
           numChannels: 1,    // Mono
@@ -51,17 +52,17 @@ class AudioService {
           _audioChunkController?.add(chunk);
         },
         onError: (error) {
-          print('Audio stream error: $error');
+          AppLogger.d('Audio stream error: $error');
           _audioChunkController?.addError(error);
         },
         onDone: () {
-          print('Audio stream completed');
+          AppLogger.d('Audio stream completed');
         },
       );
 
       return _audioChunkController?.stream;
     } catch (e) {
-      print('Failed to start streaming recording: $e');
+      AppLogger.d('Failed to start streaming recording: $e');
       return null;
     }
   }
@@ -74,7 +75,7 @@ class AudioService {
         _currentRecordingPath = '${directory.path}/recording_${DateTime.now().millisecondsSinceEpoch}.wav';
         
         await _recorder.start(
-          RecordConfig(
+          const RecordConfig(
             encoder: AudioEncoder.wav,
             sampleRate: AppConstants.audioSampleRate,
             numChannels: AppConstants.audioChannels,
@@ -87,7 +88,7 @@ class AudioService {
       }
       return false;
     } catch (e) {
-      print('Failed to start recording: $e');
+      AppLogger.d('Failed to start recording: $e');
       return false;
     }
   }
@@ -115,7 +116,7 @@ class AudioService {
       }
       return null;
     } catch (e) {
-      print('Failed to stop recording: $e');
+      AppLogger.d('Failed to stop recording: $e');
       _isRecording = false;
       _isStreaming = false;
       return null;
@@ -141,7 +142,7 @@ class AudioService {
         }
       }
     } catch (e) {
-      print('Failed to cancel recording: $e');
+      AppLogger.d('Failed to cancel recording: $e');
       _isRecording = false;
       _isStreaming = false;
     }

@@ -1,3 +1,4 @@
+import 'package:polyglot_mobile/core/utils/app_logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
@@ -62,14 +63,14 @@ class LocationService {
       // Check if location services are enabled
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        print('Location services are disabled');
+        AppLogger.d('Location services are disabled');
         return null;
       }
 
       // Check permission
       final hasPermission = await this.hasPermission();
       if (!hasPermission) {
-        print('Location permission not granted');
+        AppLogger.d('Location permission not granted');
         return null;
       }
 
@@ -99,7 +100,7 @@ class LocationService {
           region = place.administrativeArea;
         }
       } catch (e) {
-        print('Geocoding failed: $e');
+        AppLogger.d('Geocoding failed: $e');
         // Continue without geocoded address
       }
 
@@ -113,7 +114,7 @@ class LocationService {
         timezone: DateTime.now().timeZoneName,
       );
     } catch (e) {
-      print('Failed to get location: $e');
+      AppLogger.d('Failed to get location: $e');
       return null;
     }
   }

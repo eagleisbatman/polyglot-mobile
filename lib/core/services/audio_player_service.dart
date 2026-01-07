@@ -1,3 +1,4 @@
+import 'package:polyglot_mobile/core/utils/app_logger.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
@@ -29,7 +30,7 @@ class AudioPlayerService {
       await _player.play(DeviceFileSource(filePath));
       _isPlaying = true;
     } catch (e) {
-      print('Error playing file: $e');
+      AppLogger.d('Error playing file: $e');
       _isPlaying = false;
     }
   }
@@ -52,7 +53,7 @@ class AudioPlayerService {
       await _player.play(DeviceFileSource(tempFile.path));
       _isPlaying = true;
     } catch (e) {
-      print('Error playing bytes: $e');
+      AppLogger.d('Error playing bytes: $e');
       _isPlaying = false;
     }
   }

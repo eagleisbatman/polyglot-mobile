@@ -23,13 +23,10 @@ class AppColorScheme {
     error: Color(0xFFEF4444), // Red 500
     onError: Color(0xFFFFFFFF), // White
     errorContainer: Color(0xFFFEE2E2), // Red 100
-    onErrorContainer: Color(0xFF991B1B), // Red 800
-
-    background: Color(0xFFF8FAFC), // Slate 50
-    onBackground: Color(0xFF0F172A), // Slate 900
+    onErrorContainer: Color(0xFF991B1B), // Slate 900
     surface: Color(0xFFFFFFFF), // White
     onSurface: Color(0xFF0F172A), // Slate 900
-    surfaceVariant: Color(0xFFF1F5F9), // Slate 100
+    surfaceContainerHighest: Color(0xFFF1F5F9), // Slate 100
     onSurfaceVariant: Color(0xFF475569), // Slate 600
 
     outline: Color(0xFF94A3B8), // Slate 400
@@ -61,13 +58,10 @@ class AppColorScheme {
     error: Color(0xFFF87171), // Red 400
     onError: Color(0xFF991B1B), // Red 800
     errorContainer: Color(0xFF7F1D1D), // Red 900
-    onErrorContainer: Color(0xFFFEE2E2), // Red 100
-
-    background: Color(0xFF0F172A), // Slate 900
-    onBackground: Color(0xFFF1F5F9), // Slate 100
+    onErrorContainer: Color(0xFFFEE2E2), // Slate 100
     surface: Color(0xFF1E293B), // Slate 800
     onSurface: Color(0xFFF1F5F9), // Slate 100
-    surfaceVariant: Color(0xFF334155), // Slate 700
+    surfaceContainerHighest: Color(0xFF334155), // Slate 700
     onSurfaceVariant: Color(0xFFCBD5E1), // Slate 300
 
     outline: Color(0xFF64748B), // Slate 500

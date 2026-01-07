@@ -6,9 +6,9 @@ class StreamingDots extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return const Row(
       mainAxisSize: MainAxisSize.min,
-      children: const [
+      children: [
         _StreamingDot(delay: 0),
         _StreamingDot(delay: 100),
         _StreamingDot(delay: 200),

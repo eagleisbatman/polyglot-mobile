@@ -65,22 +65,11 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
     final preferencesState = ref.watch(preferencesProvider);
     final prefs = preferencesState.preferences ?? UserPreferences();
 
-    if (_selectedSourceLanguage == null) {
-      _selectedSourceLanguage = prefs.defaultSourceLanguage ?? 'en';
-    }
-    if (_selectedTargetLanguage == null) {
-      _selectedTargetLanguage = prefs.defaultTargetLanguage ?? 'es';
-    }
-    if (_selectedTheme == null) {
-      _selectedTheme = prefs.theme;
-    }
-    if (_enableNotifications == null) {
-      _enableNotifications = prefs.enableNotifications;
-    }
-    if (_enableLocationTracking == null) {
-      // _enableLocationTracking = prefs.enableLocationTracking; // TODO: Add to model
-      _enableLocationTracking = false;
-    }
+    _selectedSourceLanguage ??= prefs.defaultSourceLanguage ?? 'en';
+    _selectedTargetLanguage ??= prefs.defaultTargetLanguage ?? 'es';
+    _selectedTheme ??= prefs.theme;
+    _enableNotifications ??= prefs.enableNotifications;
+    _enableLocationTracking ??= false;
 
     return Scaffold(
       key: const Key(TestTags.preferencesScreen),

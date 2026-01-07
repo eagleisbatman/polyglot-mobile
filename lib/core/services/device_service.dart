@@ -1,5 +1,7 @@
+import 'package:polyglot_mobile/core/utils/app_logger.dart';
 import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -99,9 +101,19 @@ class DeviceService {
   static const String _deviceIdKey = 'polyglot_device_id';
   static const String _userIdKey = 'polyglot_user_id';
   static const String _userDataKey = 'polyglot_user_data';
-  static const String _appVersion = '1.0.0';
 
   final DeviceInfoPlugin _deviceInfoPlugin = DeviceInfoPlugin();
+  
+  /// Get app version from package info
+  Future<String> _getAppVersion() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      return '${packageInfo.version}+${packageInfo.buildNumber}';
+    } catch (e) {
+      AppLogger.w('Failed to get app version: $e');
+      return 'unknown';
+    }
+  }
 
   /// Get or create a persistent device ID
   Future<String> getOrCreateDeviceId() async {
@@ -139,7 +151,7 @@ class DeviceService {
         return iosInfo.identifierForVendor;
       }
     } catch (e) {
-      print('Error getting platform device ID: $e');
+      AppLogger.d('Error getting platform device ID: $e');
     }
     return null;
   }
@@ -148,6 +160,7 @@ class DeviceService {
   Future<DeviceInfo> collectDeviceInfo() async {
     final deviceId = await getOrCreateDeviceId();
     final timezone = DateTime.now().timeZoneName;
+    final appVersion = await _getAppVersion();
     
     try {
       if (Platform.isAndroid) {
@@ -158,7 +171,7 @@ class DeviceService {
           deviceBrand: androidInfo.brand,
           osName: 'Android',
           osVersion: androidInfo.version.release,
-          appVersion: _appVersion,
+          appVersion: appVersion,
           timezone: timezone,
         );
       } else if (Platform.isIOS) {
@@ -169,12 +182,12 @@ class DeviceService {
           deviceBrand: 'Apple',
           osName: 'iOS',
           osVersion: iosInfo.systemVersion,
-          appVersion: _appVersion,
+          appVersion: appVersion,
           timezone: timezone,
         );
       }
     } catch (e) {
-      print('Error collecting device info: $e');
+      AppLogger.d('Error collecting device info: $e');
     }
     
     // Fallback
@@ -182,7 +195,7 @@ class DeviceService {
       deviceId: deviceId,
       osName: Platform.operatingSystem,
       osVersion: Platform.operatingSystemVersion,
-      appVersion: _appVersion,
+      appVersion: appVersion,
       timezone: timezone,
     );
   }

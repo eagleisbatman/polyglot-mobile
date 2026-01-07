@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 /// Represents a message in the unified chat interface
 enum MessageType { voice, vision, document, text }
