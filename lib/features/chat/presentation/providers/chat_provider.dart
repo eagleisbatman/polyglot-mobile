@@ -191,6 +191,21 @@ class ChatNotifier extends StateNotifier<ChatState> {
     );
   }
 
+  /// Load a message from history into the chat
+  void loadHistoryMessage(ChatMessage message) {
+    state = state.copyWith(
+      messages: [message],
+      sourceLanguage: message.sourceLanguage,
+      targetLanguage: message.targetLanguage,
+      liveUserText: null,
+      liveModelText: null,
+      error: null,
+      isRecording: false,
+      isProcessing: false,
+      currentlyPlayingId: null,
+    );
+  }
+
   /// Start recording with real-time streaming
   Future<void> startRecording() async {
     _analytics.trackEvent(

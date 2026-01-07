@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/test_tags.dart';
 import '../../../../core/services/history_api_service.dart';
+import '../../../chat/domain/entities/chat_message.dart';
+import '../../../chat/presentation/providers/chat_provider.dart';
 import '../providers/history_provider.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
@@ -221,7 +224,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     final typeIcon = _getTypeIconData(item.type);
     
     return GestureDetector(
-      onTap: () => _showTranslationDetails(item, theme),
+      onTap: () => _openInChat(item),
       child: Container(
         key: Key('${TestTags.historyItem}_${item.id}'),
         margin: const EdgeInsets.only(bottom: 12),
@@ -304,52 +307,24 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     );
   }
 
-  void _showTranslationDetails(HistoryItem item, ThemeData theme) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: theme.colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Original
-            Text(
-              'Original',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.outline,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              item.transcription ?? item.displayTitle,
-              style: theme.textTheme.bodyLarge,
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Translation
-            Text(
-              'Translation',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.outline,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              item.translation ?? '',
-              style: theme.textTheme.bodyLarge,
-            ),
-            
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
+  void _openInChat(HistoryItem item) {
+    // Convert history item to chat message
+    final message = ChatMessage(
+      id: item.id,
+      type: MessageType.voice,
+      status: MessageStatus.complete,
+      userContent: item.transcription,
+      translatedContent: item.translation,
+      userAudioPath: item.userAudioUrl,
+      translationAudioPath: item.translationAudioUrl,
+      sourceLanguage: item.sourceLanguage ?? 'en',
+      targetLanguage: item.targetLanguage,
+      timestamp: item.createdAt,
     );
+    
+    // Load into chat provider and navigate
+    ref.read(chatProvider.notifier).loadHistoryMessage(message);
+    context.go('/');
   }
 
   IconData _getTypeIconData(String type) {
