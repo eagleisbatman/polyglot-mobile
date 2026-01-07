@@ -246,30 +246,13 @@ class ChatNotifier extends StateNotifier<ChatState> {
       },
     );
 
-    state = state.copyWith(isConnecting: true, error: null);
+    state = state.copyWith(isConnecting: false, error: null);
     _userAudioChunks = []; // Reset audio chunks
 
-    // Try WebSocket first for real-time streaming, fallback to batch if fails
-    AppLogger.d('Attempting WebSocket connection for real-time streaming');
-    
-    try {
-      final connected = await _realtimeService.connect(
-        sourceLanguage: state.sourceLanguage,
-        targetLanguage: state.targetLanguage,
-      ).timeout(const Duration(seconds: 5));
-      
-      if (connected) {
-        AppLogger.d('WebSocket connected, starting real-time recording');
-        _setupRealtimeListeners();
-        await _startRealtimeRecording();
-      } else {
-        AppLogger.d('WebSocket connection failed, falling back to batch');
-        await _startBatchRecording();
-      }
-    } catch (e) {
-      AppLogger.w('WebSocket connection error: $e, falling back to batch');
-      await _startBatchRecording();
-    }
+    // Use batch mode directly (WebSocket disabled until Railway supports it)
+    AppLogger.d('Starting batch recording (WebSocket disabled)');
+    AppLogger.d('Current conversationId before recording: ${state.conversationId}');
+    await _startBatchRecording();
   }
   
   /// Start real-time streaming recording
